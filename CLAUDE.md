@@ -61,9 +61,9 @@ for a `BotBrain` (see git history / CLAUDE notes) and log `applyHit`/`onPoint`. 
 - [x] Phase 2 — racket stats system + lobby hub: 18 rackets/6 rarities, summon (spin, ×10, lucky, pity 40), loadout
   with stat compare, 1v1/2v2/3v3 vs bots (bots get random rackets by skill tier).
 - [x] Phase 3 — online via Cloudflare Durable Object relay (tested locally with wrangler dev: 1v1 quick match in sync,
-  2v2 private room with bots). Relay deploy pending Cloudflare login.
+  2v2 private room with bots). Relay deployed and verified with tools/relay-test.mjs.
 - [x] Phase 4 — Yen, shop, spins/lucky spins, codes, ranked (online queue + vs-bot fallback), leagues, balance patch 1.1.
 
 ## Next / ideas
-- Deploy relay (needs `wrangler login`), then set `VITE_RELAY_URL` in `.env.production` and push.
+- Relay deployed: https://rally-riot-relay.jacob-liulele.workers.dev (set in `.env.production`). Redeploy: `cd relay && npx wrangler deploy`.
 - Profiles/ratings are local only; a server-side leaderboard would need a DO keyed by player.
