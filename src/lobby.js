@@ -23,11 +23,7 @@ export class Lobby {
     this.glow = new THREE.PointLight(IDLE_PORTAL, 10, 12, 1.6); this.glow.position.set(0, 3.2, -6.2); this.scene.add(this.glow);
     this.fx = new FX(this.scene);
 
-    this.avatar = makeAvatar(TEAM_COLORS[0]); this.scene.add(this.avatar);
-    this.avatar.position.set(1.6, 0, 3.2); this.avatar.rotation.y = -0.35;
-    this.armR = this.avatar.getObjectByName("ArmR"); this.armL = this.avatar.getObjectByName("ArmL");
-    this.hand = this.avatar.getObjectByName("HandR");
-    this.setRacket(game.equipped());
+    this.setLook(game.look());
 
     this.camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 1000);
     this.camPos = new THREE.Vector3(); this.camLook = new THREE.Vector3();
@@ -35,7 +31,18 @@ export class Lobby {
     this.frame(true);
   }
 
+  setLook(look) {
+    const old = this.avatar;
+    if (old) { this.scene.remove(old); if (this.racket) this.hand.remove(this.racket); }
+    this.avatar = makeAvatar(look, TEAM_COLORS[0]); this.scene.add(this.avatar);
+    this.avatar.position.set(1.6, 0, 3.2); this.avatar.rotation.y = old ? old.rotation.y : -0.35;
+    this.armR = this.avatar.getObjectByName("ArmR"); this.armL = this.avatar.getObjectByName("ArmL");
+    this.hand = this.avatar.getObjectByName("HandR");
+    this.racket = null; this.setRacket(this.racketId || this.game.equipped());
+  }
+
   setRacket(id) {
+    this.racketId = id;
     if (this.racket) this.hand.remove(this.racket);
     this.racket = makeRacket(id); this.racket.rotation.x = Math.PI; this.racket.position.y = 0.06; this.racket.scale.setScalar(1.35);
     this.hand.add(this.racket);
@@ -46,6 +53,7 @@ export class Lobby {
     const wide = innerWidth / innerHeight > 1.1;
     let want, look;
     if (this.summonSeq) { const w = wide ? 2.2 : 0; want = new THREE.Vector3(w, 3.3, 2.4); look = new THREE.Vector3(w * 0.55, 3.0, -7); }
+    else if (this.closeup) { const w = wide ? -1.1 : 0; want = new THREE.Vector3(1.6 + w, 1.55, 6.6); look = new THREE.Vector3(1.6 + w, 1.05, 3.2); }
     else if (wide) { want = new THREE.Vector3(-0.4, 2.1, 9.4); look = new THREE.Vector3(-0.9, 1.9, 0); }
     else { want = new THREE.Vector3(1.6, 1.8, 8.6); look = new THREE.Vector3(1.6, 1.4, 0); }
     if (snap) { this.camPos.copy(want); this.camLook.copy(look); }

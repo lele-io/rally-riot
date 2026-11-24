@@ -3,6 +3,7 @@ import { h } from "./ui.js";
 import { RACKETS, RACKET, RARITY, RARITIES, STAT_KEYS, STAT_LABEL, racketStats, summon, PITY } from "./rackets.js";
 import { profile, update } from "./save.js";
 import { sfx } from "./sfx.js";
+import { HAIR, OUTFIT, HAT, FACE, SKIN_TONES, PALETTE, DEFAULT_LOOK, normalizeLook, randomLook } from "./looks.js";
 
 export function panel(host, title, onClose, ...body) {
   const close = () => { wrap.remove(); removeEventListener("keydown", esc); onClose && onClose(); };
@@ -169,5 +170,44 @@ export function openPlay(host, start, extraTabs = []) {
   tabs.forEach(([n], k) => bar.append(h("button", { onclick: () => { sfx.ui(); show(k); } }, n)));
   const pn = tabs.length > 1 ? panel(host, "Play", null, bar, body) : panel(host, "Play vs Bots", null, body);
   show(0);
+  return pn;
+}
+
+// ---------------------------------------------------------------- customize (character look)
+
+export function openCustomize(host, lobby, onChange) {
+  let look = normalizeLook(profile().look);
+  const body = h("div", { class: "col", style: "gap:14px" });
+  const commit = () => { update((p) => (p.look = { ...look })); lobby.setLook(look); onChange && onChange(); };
+  const chips = (list, key) => h("div", { class: "chipsel" }, ...list.map(([id, label]) =>
+    h("button", { class: "opt" + (look[key] === id ? " on" : ""), onclick: () => { look[key] = id; sfx.ui(); commit(); draw(); } }, label)));
+  const swatches = (key, colors) => {
+    const custom = h("input", { type: "color", value: look[key], title: "Any color", oninput: (e) => { look[key] = e.target.value; commit(); } });
+    custom.addEventListener("change", draw);
+    return h("div", { class: "swatches" }, ...colors.map((c) =>
+      h("button", { class: "sw" + (look[key].toLowerCase() === c ? " on" : ""), style: `background:${c}`, title: c, onclick: () => { look[key] = c; sfx.ui(); commit(); draw(); } })), h("label", { class: "sw custom", title: "Pick any color" }, custom));
+  };
+  const row = (label, ...kids) => h("div", { class: "col", style: "gap:6px" }, h("div", { class: "lbl" }, label), ...kids);
+  const tabs = {
+    Hair: () => [row("Style", chips(HAIR, "hair")), row("Hair color", swatches("hairColor", PALETTE))],
+    Outfit: () => [row("Outfit", chips(OUTFIT, "outfit")), row("Main color", swatches("c1", PALETTE)), row("Trim color", swatches("c2", PALETTE))],
+    Hat: () => [row("Headwear", chips(HAT, "hat")), row("Hat color", swatches("hatColor", PALETTE)), row("Band / ribbon", swatches("hatBand", PALETTE))],
+    Face: () => [row("Skin tone", swatches("skin", SKIN_TONES)), row("Eye color", swatches("eyes", ["#1f1b24", "#5a3a2a", "#2d4a9e", "#3f9e6e", "#8a63e0", "#d83a3f", "#f2a33a", "#5fd6c4"])), row("Face detail", chips(FACE, "face"))],
+  };
+  let tab = "Hair";
+  const bar = h("div", { class: "tabs" });
+  function draw() {
+    bar.innerHTML = "";
+    for (const t of Object.keys(tabs)) bar.append(h("button", { class: t === tab ? "on" : "", onclick: () => { tab = t; sfx.ui(); draw(); } }, t));
+    body.innerHTML = "";
+    body.append(...tabs[tab]());
+  }
+  draw();
+  const tools = h("div", { class: "row", style: "justify-content:flex-start;margin-top:14px" },
+    h("button", { class: "btn cool", onclick: () => { look = normalizeLook(randomLook()); sfx.summon(1); commit(); draw(); } }, "RANDOMIZE"),
+    h("button", { class: "btn", onclick: () => { look = { ...DEFAULT_LOOK }; sfx.ui(); commit(); draw(); } }, "RESET"));
+  lobby.closeup = true;
+  const pn = panel(host, "Customize", () => { lobby.closeup = false; }, bar, body, tools,
+    h("div", { class: "muted", style: "font-size:12px;margin-top:10px" }, "Your look is saved automatically and shows up in online matches too. Your scarf always shows your team color."));
   return pn;
 }

@@ -9,6 +9,7 @@ import { COURT, PHYS, step, solveShot } from "./shuttle.js";
 import { RACKET } from "./rackets.js";
 
 const TICK = 1 / 60;
+const CROSSHAIR_Y = 0.18; // NDC height of the crosshair (CSS .crosshair top = 41%)
 const SHUTTLE_SCALE = 3.2;
 const HOMES = {
   1: [[5.2, 0]],
@@ -70,12 +71,16 @@ export class Match {
 
     this.camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 200);
     // orbit camera state: start behind our player looking at the net
-    this.cam = { yaw: this.viewSide < 0 ? 0 : Math.PI, pitch: 0.4, dist: 11 };
+    this.cam = { yaw: this.viewSide < 0 ? 0 : Math.PI, pitch: 0.3, dist: 9 }; this.shoulder = 0;
     this.camLook = new THREE.Vector3(this.viewSide * 5, 1.5, 0);
     this.camera.position.set(this.viewSide * 15, 6, 0); this.camera.lookAt(this.camLook);
     this.ray = new THREE.Raycaster(); this.plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 
     if (this.net) this.net.match = this;
+    const inp = this.game.input;
+    inp.onLockChange = (on) => this.ui?.lockState(on);
+    if (this.local) inp.setWantLock(true);
+    this.ui?.lockState(inp.locked);
     this.resetPositions();
     this.setState("intro");
   }
@@ -217,6 +222,7 @@ export class Match {
 
   onOver(w) {
     this.state = "over";
+    this.game.input.setWantLock(false); // free the cursor for the end screen
     const won = this.local ? w === this.local.team : null;
     this.opts.onEnd?.({ won, winner: w, score: [...this.score], myPoints: this.local ? this.score[this.local.team] : 0, stats: { ...this.stats } });
   }
@@ -315,7 +321,7 @@ export class Match {
       this.score = m.score; this.onOver(m.winner);
     } else if (m.k === "leave" || m.k === "closed") {
       const id = m.k === "closed" ? this.net.hostId : m.id;
-      if (id === this.net.hostId && !this.authority) { this.ui?.banner("HOST LEFT", "#ff7d9b", 3); this.state = "over"; setTimeout(() => this.opts.onEnd?.({ won: null, aborted: true, score: [...this.score], stats: { ...this.stats } }), 1500); return; }
+      if (id === this.net.hostId && !this.authority) { this.game.input.setWantLock(false); this.ui?.banner("HOST LEFT", "#ff7d9b", 3); this.state = "over"; setTimeout(() => this.opts.onEnd?.({ won: null, aborted: true, score: [...this.score], stats: { ...this.stats } }), 1500); return; }
       const p = this.players.find((q) => q.id === id);
       if (p && p.kind === "remote" && this.authority) { p.kind = "bot"; p.name += " (bot)"; this.brains.set(p, new BotBrain(this, p, 0.5)); this.ui?.pop("A player left — a bot takes over", "#ffd23d", true); }
     }
@@ -330,9 +336,9 @@ export class Match {
     // camera-relative, like Roblox: W walks where the camera looks
     const fx = Math.cos(this.cam.yaw), fz = Math.sin(this.cam.yaw);
     const mx = fx * fwd - fz * right, mz = fz * fwd + fx * right;
-    // aim: mouse ray onto the floor, clamped to the far court
-    if (input.mouse.moved) {
-      this.ray.setFromCamera(new THREE.Vector2(input.mouse.x, input.mouse.y), this.camera);
+    // aim: the crosshair (just above screen centre) projected onto the floor, clamped to the far court
+    {
+      this.ray.setFromCamera(new THREE.Vector2(0, CROSSHAIR_Y), this.camera);
       const hit = new THREE.Vector3();
       if (this.ray.ray.intersectPlane(this.plane, hit)) {
         const ox = -s;
@@ -342,6 +348,7 @@ export class Match {
     return {
       mx, mz, jump: input.pressed("Space"), dash: input.pressed("ShiftLeft") || input.pressed("ShiftRight"),
       swing: input.mouse.down && input.enabled, aim: this.aim,
+      face: [fx, fz], // always face where the camera looks
     };
   }
 
@@ -374,22 +381,26 @@ export class Match {
 
     // third-person orbit camera (Roblox-style): right-drag to turn, wheel to zoom, follows your player
     const c = this.cam, look = this.game.input.takeLook();
-    c.yaw += look.dx * 0.0055;
-    c.pitch = THREE.MathUtils.clamp(c.pitch + look.dy * 0.0045, -0.25, 1.4);
+    c.yaw += look.dx * 0.0035;
+    c.pitch = THREE.MathUtils.clamp(c.pitch + look.dy * 0.0035, -0.1, 1.2);
     c.dist = THREE.MathUtils.clamp(c.dist * Math.pow(1.0012, look.wheel), 3, 30);
     const focus = L ? L.root.position : new THREE.Vector3(this.viewSide * 5, 0, 0);
     this.camLook.lerp(new THREE.Vector3(focus.x, focus.y + 1.5, focus.z), 1 - Math.exp(-dt * 12));
     const f = new THREE.Vector3(Math.cos(c.yaw), 0, Math.sin(c.yaw));
-    const pos = this.camLook.clone().addScaledVector(f, -c.dist * Math.cos(c.pitch)).add(new THREE.Vector3(0, c.dist * Math.sin(c.pitch), 0));
+    // over-the-shoulder offset to the right (always-locked camera)
+    this.shoulder += (1.2 - this.shoulder) * Math.min(1, dt * 10);
+    const look2 = this.camLook.clone().add(new THREE.Vector3(-f.z, 0, f.x).multiplyScalar(this.shoulder));
+    const pos = look2.clone().addScaledVector(f, -c.dist * Math.cos(c.pitch)).add(new THREE.Vector3(0, c.dist * Math.sin(c.pitch), 0));
     pos.y = Math.max(0.4, pos.y);
     const sk = this.fx.shakeAmt;
     this.camera.position.copy(pos).add(new THREE.Vector3((Math.random() - 0.5) * sk, (Math.random() - 0.5) * sk, (Math.random() - 0.5) * sk));
-    this.camera.lookAt(this.camLook);
+    this.camera.lookAt(look2);
   }
 
   resize(w, h) { this.camera.aspect = w / h; this.camera.updateProjectionMatrix(); }
 
   dispose() {
+    const inp = this.game.input; inp.setWantLock(false); inp.onLockChange = null;
     for (const p of this.players) p.dispose();
     this.fx.dispose(); this.env.dispose();
     this.world.free();

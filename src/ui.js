@@ -21,11 +21,11 @@ export class MatchHUD {
         h("div", { class: "vs" }, "VS"),
         h("div", { class: "team t1" }, h("b", { class: "s1" }, "0"), h("span", { class: "tname" }, names[1]))),
       h("div", { class: "banner" }), h("div", { class: "pops" }),
-      h("div", { class: "servehint" }),
+      h("div", { class: "servehint" }), h("div", { class: "crosshair" }), h("div", { class: "lockbadge" }, "Click to grab the camera · hold ALT for your cursor"),
       h("div", { class: "meters" },
         h("div", { class: "meter charge" }, h("i"), h("span", {}, "POWER")),
         h("div", { class: "meter dash" }, h("i"), h("span", {}, "DASH  SHIFT"))),
-      h("div", { class: "keys" }, "WASD move · Space jump · Click swing (hold = power) · Shift dash · Mouse aims · Right-drag camera · Wheel zoom"));
+      h("div", { class: "keys" }, "WASD move · Mouse look + aim · Click swing (hold = power) · Space jump · Shift dash · Wheel zoom · Hold Alt for cursor"));
     if (flip) this.root.classList.add("flip");
     root.append(this.root);
     this.bannerT = null;
@@ -56,5 +56,6 @@ export class MatchHUD {
     const c = $(".charge i", this.root); c.style.width = ch * 100 + "%"; c.classList.toggle("full", ch >= 1);
     const d = $(".dash i", this.root); d.style.width = (1 - p.dashCd / p.d.dashCd) * 100 + "%"; d.classList.toggle("full", p.dashCd <= 0);
   }
+  lockState(on) { this.root.classList.toggle("unlocked", !on); }
   dispose() { this.root.remove(); }
 }

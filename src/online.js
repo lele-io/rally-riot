@@ -4,6 +4,7 @@ import { h } from "./ui.js";
 import { connect, Session, RELAY_URL } from "./net.js";
 import { profile } from "./save.js";
 import { randomRacket } from "./rackets.js";
+import { normalizeLook, randomLook } from "./looks.js";
 import { sfx } from "./sfx.js";
 
 const BOTN = ["Netbot", "Auto-Ace", "Shuttle-9", "RoboRally", "Circuit", "Servo"];
@@ -27,7 +28,8 @@ async function room(game, box, code, isHost) {
   sfx.ui();
   const me = myId(), p = profile();
   const conn = connect("p-" + code, me);
-  const members = new Map([[me, { name: p.name, racket: p.equipped }]]);
+  const myLook = normalizeLook(p.look);
+  const members = new Map([[me, { name: p.name, racket: p.equipped, look: myLook }]]);
   let hostId = isHost ? me : null, size = 1;
   box.innerHTML = "";
   const list = h("div", { class: "col", style: "gap:6px" }), info = h("div", { class: "muted" });
@@ -45,17 +47,17 @@ async function room(game, box, code, isHost) {
     if (isHost && size * 2 < members.size) { size = Math.min(3, Math.ceil(members.size / 2)); drawSize(); }
   };
   try { await conn.ready; } catch (e) { info.textContent = "Can't reach the online server right now."; return; }
-  const hi = (to) => conn.send({ k: "hi", from: me, name: p.name, racket: p.equipped, host: isHost }, to);
+  const hi = (to) => conn.send({ k: "hi", from: me, name: p.name, racket: p.equipped, look: myLook, host: isHost }, to);
   const off = conn.on((m) => {
     if (m.k === "hello") { if (!isHost && !m.members.length) info.textContent = "No room with that code (yet)."; hi(); }
     if (m.k === "join") hi(m.id);
-    if (m.k === "hi" && m.from) { members.set(m.from, { name: m.name, racket: m.racket }); if (m.host) hostId = m.from; draw(); }
+    if (m.k === "hi" && m.from) { members.set(m.from, { name: m.name, racket: m.racket, look: normalizeLook(m.look) }); if (m.host) hostId = m.from; draw(); }
     if (m.k === "leave") { members.delete(m.id); if (m.id === hostId) info.textContent = "The host left."; draw(); }
     if (m.k === "start") { off(); begin(m); }
   });
   draw();
   function go() {
-    const humans = [...members].map(([id, m], i) => ({ id, name: m.name, racket: m.racket, team: i % 2 }));
+    const humans = [...members].map(([id, m], i) => ({ id, name: m.name, racket: m.racket, look: m.look, team: i % 2 }));
     const msg = { k: "start", size, roster: roster(humans, size), host: me, points: size === 1 ? 11 : 15 };
     conn.send(msg); off(); begin(msg);
   }
@@ -67,7 +69,7 @@ function roster(humans, size) {
   const out = [...humans], names = [...BOTN].sort(() => Math.random() - 0.5);
   for (const t of [0, 1]) {
     let n = out.filter((p) => p.team === t).length;
-    while (n < size) { out.push({ id: `bot${t}${n}`, name: names.pop(), racket: randomRacket(3), team: t, bot: true }); n++; }
+    while (n < size) { out.push({ id: `bot${t}${n}`, name: names.pop(), racket: randomRacket(3), team: t, bot: true, look: randomLook() }); n++; }
   }
   return out;
 }
@@ -76,7 +78,7 @@ export function startOnline(game, { conn, me, hostId, size, roster, points }) {
   const net = new Session(conn, { me, hostId });
   const isHost = me === hostId;
   const players = roster.map((p) => ({
-    id: p.id, name: p.name, team: p.team, racket: p.racket,
+    id: p.id, name: p.name, team: p.team, racket: p.racket, look: normalizeLook(p.look),
     kind: p.id === me ? "local" : p.bot && isHost ? "bot" : "remote", level: 0.55,
   }));
   const meP = roster.find((p) => p.id === me);

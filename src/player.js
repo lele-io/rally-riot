@@ -13,7 +13,7 @@ const ARM_IDLE = 5.35, ARM_BACK = 2.55, ARM_FOLLOW = 6.15;
 export const TEAM_COLORS = ["#3d8bff", "#ff4d6d"];
 
 export class Player {
-  constructor(match, { id, name, team, racket = "practice", kind = "local", slot = 0 }) {
+  constructor(match, { id, name, team, racket = "practice", kind = "local", slot = 0, look = null }) {
     this.match = match; this.id = id; this.name = name; this.team = team; this.kind = kind; this.slot = slot;
     this.side = team === 0 ? -1 : 1; // which half of the court (sign of x)
     this.setRacket(racket);
@@ -35,7 +35,7 @@ export class Player {
 
     // visuals
     this.root = new THREE.Group();
-    this.avatar = makeAvatar(TEAM_COLORS[team]);
+    this.avatar = makeAvatar(look, TEAM_COLORS[team]);
     this.root.add(this.avatar);
     this.arm = this.avatar.getObjectByName("ArmR");
     this.armL = this.avatar.getObjectByName("ArmL");
@@ -81,7 +81,7 @@ export class Player {
     const d = this.d, sw = this.swing;
     // --- swing state machine
     const held = !!input.swing;
-    if (held && !this.prevSwing && sw.st === "idle") { sw.st = "charge"; sw.t = 0; sw.charge = 0; }
+    if (held && sw.st === "idle") { sw.st = "charge"; sw.t = 0; sw.charge = 0; }
     if (sw.st === "charge") {
       sw.t += dt; sw.charge = Math.min(1, sw.t / d.chargeTime);
       if (!held) { sw.st = "swing"; sw.power = sw.t < TAP ? 0 : sw.charge; sw.t = 0; sw.hit = false; this.match.onSwing(this); }
@@ -134,6 +134,7 @@ export class Player {
     const s = this.match.shuttle.p;
     let fx = -this.side * 1.6 + (s[0] - this.pos.x) * 0.3, fz = (s[2] - this.pos.z) * 0.5;
     if (sw.st === "swing" || sw.st === "charge") { const a = input.aim; if (a) { fx = a[0] - this.pos.x; fz = a[1] - this.pos.z; } }
+    if (input.face) { fx = input.face[0]; fz = input.face[1]; }
     const fl = Math.hypot(fx, fz) || 1;
     this.facing.lerp(new THREE.Vector3(fx / fl, 0, fz / fl), 0.25).normalize();
   }

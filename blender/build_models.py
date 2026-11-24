@@ -198,6 +198,7 @@ def build_shuttle():
 # ================================================================ v2 art style
 # Painterly/cel look: flat colors, chunky faceted shapes (the game toon-shades + outlines them).
 import bmesh, random
+from mathutils import Vector
 
 
 def ico(r, loc, m, sub=1, scale=(1, 1, 1), name="ico"):
@@ -221,70 +222,240 @@ def jitter(obj, amt, seed=1, zmin=-1e9):
             v.co.x += rnd.uniform(-amt, amt); v.co.y += rnd.uniform(-amt, amt); v.co.z += rnd.uniform(-amt, amt) * 0.6
 
 
-# ---------------------------------------------------------------- avatar: hooded, cloaked little hero
-def build_avatar():
-    s = new_scene("avatar")
-    team = mat("Team", (0.2, 0.5, 1.0), rough=0.7)
-    cloak = mat("Cloak", (0.94, 0.9, 0.8), rough=0.8)
-    skin = mat("Skin", (1.0, 0.86, 0.74), rough=0.7)
-    hair = mat("Hair", (0.2, 0.15, 0.24), rough=0.6)
-    dark = mat("Dark", (0.1, 0.09, 0.13), rough=0.6)
-    white = mat("EyeShine", (1, 1, 1), emit=1.0)
-    boot = mat("Boot", (0.36, 0.25, 0.2), rough=0.7)
-    gold = mat("Gold", (0.95, 0.74, 0.36), metal=0.6, rough=0.3)
+# ---------------------------------------------------------------- avatar: base body + customizable parts
+# avatar.glb = base (head, eyes, legs, boots, arms with Hand empties, team scarf).
+# avatar_parts.glb = one root empty per option: outfit_*, hair_*, hat_*, face_*. The game clones the chosen ones
+# onto the base and recolors materials: Skin, Hair, Eye, Legs, Sleeve, Outfit1, Outfit2, HatMain, HatBand, Team.
+HEAD_Z = 1.38
 
-    # cloak body: a flared cone, with a team-colored hem and a gold clasp
-    b = cone(0.4, 0.16, 0.72, (0, 0, 0.76), cloak, verts=14, name="Body"); shade_smooth(b)
-    bpy.ops.mesh.primitive_torus_add(major_radius=0.385, minor_radius=0.035, major_segments=24, minor_segments=6, location=(0, 0, 0.42))
-    assign(bpy.context.object, team); bpy.context.object.name = "Hem"
-    ico(0.045, (0, -0.2, 1.02), gold, 1, name="Clasp")
-    # scarf around the neck + a tail that streams behind
+
+def avatar_mats():
+    return dict(
+        team=mat("Team", (0.2, 0.5, 1.0), rough=0.7), skin=mat("Skin", (1.0, 0.86, 0.74), rough=0.7),
+        hair=mat("Hair", (0.2, 0.15, 0.24), rough=0.6), eye=mat("Eye", (0.1, 0.09, 0.13), rough=0.4),
+        shine=mat("EyeShine", (1, 1, 1), emit=1.0), legs=mat("Legs", (0.1, 0.09, 0.13), rough=0.6),
+        boot=mat("Boot", (0.36, 0.25, 0.2), rough=0.7), sleeve=mat("Sleeve", (0.94, 0.9, 0.8), rough=0.8),
+        o1=mat("Outfit1", (0.94, 0.9, 0.8), rough=0.8), o2=mat("Outfit2", (0.2, 0.5, 1.0), rough=0.7),
+        gold=mat("Gold", (0.95, 0.74, 0.36), metal=0.6, rough=0.3), hatm=mat("HatMain", (0.95, 0.8, 0.45), rough=0.8),
+        hatb=mat("HatBand", (0.85, 0.2, 0.22), rough=0.7), halo=mat("Halo", (1.0, 0.9, 0.55), emit=3.0),
+        scar=mat("Scar", (0.45, 0.18, 0.18), rough=0.6), blush=mat("Blush", (1.0, 0.55, 0.6), rough=0.8),
+        ink=mat("Ink", (0.12, 0.1, 0.15), rough=0.5),
+    )
+
+
+def group(name, objs):
+    bpy.ops.object.empty_add(type="PLAIN_AXES", location=(0, 0, 0))
+    root = bpy.context.object; root.name = name
+    for o in objs:
+        o.parent = root
+    return root
+
+
+def build_avatar():
+    s = new_scene("avatar"); M = avatar_mats()
     bpy.ops.mesh.primitive_torus_add(major_radius=0.17, minor_radius=0.065, major_segments=20, minor_segments=8, location=(0, 0, 1.1))
-    sc = bpy.context.object; sc.name = "Scarf"; assign(sc, team); shade_smooth(sc)
-    box((0.14, 0.05, 0.5), (0.06, 0.2, 0.86), team, "ScarfTail", rot=(0.5, 0.15, 0))
-    # head
-    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.27, segments=24, ring_count=14, location=(0, 0, 1.38))
+    sc = bpy.context.object; sc.name = "Scarf"; assign(sc, M["team"]); shade_smooth(sc)
+    box((0.14, 0.05, 0.5), (0.06, 0.2, 0.86), M["team"], "ScarfTail", rot=(0.5, 0.15, 0))
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.27, segments=24, ring_count=14, location=(0, 0, HEAD_Z))
     hd = bpy.context.object; hd.name = "Head"; hd.scale = (1, 0.95, 0.92); bpy.ops.object.transform_apply(scale=True)
-    assign(hd, skin); shade_smooth(hd)
-    # hair: a cap that leaves the face open, plus a fringe and a couple of tufts
-    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.29, segments=24, ring_count=14, location=(0, 0.02, 1.42))
-    hr = bpy.context.object; hr.name = "Hair"; assign(hr, hair)
-    bm = bmesh.new(); bm.from_mesh(hr.data)
-    kill = [v for v in bm.verts if (v.co.y < -0.05 and v.co.z < 0.02) or v.co.z < -0.2]
-    bmesh.ops.delete(bm, geom=kill, context="VERTS"); bm.to_mesh(hr.data); bm.free(); shade_smooth(hr)
-    for x, rz in ((-0.12, 0.35), (-0.03, 0.05), (0.07, -0.25), (0.15, -0.5)):
-        cone(0.075, 0, 0.2, (x, -0.21, 1.46), hair, verts=5, rot=(math.pi * 0.92, 0, rz), name="Fringe")
-    cone(0.05, 0, 0.22, (0.04, 0.0, 1.72), hair, verts=5, rot=(-0.4, 0.3, 0), name="Tuft")
-    cone(0.04, 0, 0.16, (-0.05, 0.03, 1.7), hair, verts=5, rot=(-0.2, -0.5, 0), name="Tuft")
-    # hood draped behind the head
-    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.3, segments=20, ring_count=12, location=(0, 0.08, 1.24))
-    hood = bpy.context.object; hood.name = "Hood"; assign(hood, cloak)
-    bm = bmesh.new(); bm.from_mesh(hood.data)
-    bmesh.ops.delete(bm, geom=[v for v in bm.verts if v.co.y < 0.06 or v.co.z > -0.02], context="VERTS"); bm.to_mesh(hood.data); bm.free()
-    shade_smooth(hood)
-    # big anime eyes with a shine
+    assign(hd, M["skin"]); shade_smooth(hd)
+    cyl(0.08, 0.15, (0, 0, 1.14), verts=10, m=M["skin"], name="Neck")
     for sx in (-1, 1):
-        ico(0.045, (sx * 0.095, -0.235, 1.37), dark, 2, scale=(0.8, 0.5, 1.35), name="Eye")
-        ico(0.014, (sx * 0.095 - 0.012, -0.258, 1.4), white, 1, name="Shine")
-    # short legs + boots
+        ico(0.045, (sx * 0.095, -0.235, 1.37), M["eye"], 2, scale=(0.8, 0.5, 1.35), name="Eye")
+        ico(0.014, (sx * 0.095 - 0.012, -0.258, 1.4), M["shine"], 1, name="Shine")
     for sx, nm in ((-1, "R"), (1, "L")):
-        cyl(0.065, 0.36, (sx * 0.12, 0, 0.3), verts=10, m=dark, name="Leg" + nm)
+        cyl(0.065, 0.36, (sx * 0.12, 0, 0.3), verts=10, m=M["legs"], name="Leg" + nm)
         bpy.ops.mesh.primitive_uv_sphere_add(radius=1, segments=12, ring_count=8, location=(sx * 0.12, -0.04, 0.07))
         f = bpy.context.object; f.name = "Foot" + nm; f.scale = (0.09, 0.15, 0.075)
-        bpy.ops.object.transform_apply(scale=True); assign(f, boot); shade_smooth(f)
-    # arms: origin at the shoulder; cloak sleeve + hand; Hand empty at the tip (racket attaches there)
+        bpy.ops.object.transform_apply(scale=True); assign(f, M["boot"]); shade_smooth(f)
     for sx, nm in ((-1, "R"), (1, "L")):
         sxp = sx * 0.22
         bpy.ops.mesh.primitive_cone_add(vertices=10, radius1=0.085, radius2=0.06, depth=0.34, location=(0, 0, -0.18))
-        sl = bpy.context.object; assign(sl, cloak)
+        sl = bpy.context.object; assign(sl, M["sleeve"])
         bpy.ops.mesh.primitive_uv_sphere_add(radius=0.065, segments=10, ring_count=6, location=(0, 0, -0.41))
-        hn = bpy.context.object; assign(hn, skin)
+        hn = bpy.context.object; assign(hn, M["skin"])
         arm = join([sl, hn], "Arm" + nm); shade_smooth(arm)
         arm.location = (sxp, 0, 1.03)
         bpy.ops.object.empty_add(type="PLAIN_AXES", location=(sxp, 0, 1.03 - 0.44))
         h = bpy.context.object; h.name = "Hand" + nm
         h.parent = arm; h.matrix_parent_inverse = arm.matrix_world.inverted()
     finish("avatar", s)
+
+
+def cut_verts(obj, center, pred):
+    """delete vertices where pred(x, y, z) is true; coords are world-space minus center (origin-independent)"""
+    mw = obj.matrix_world.copy(); c = Vector(center)
+    bm = bmesh.new(); bm.from_mesh(obj.data)
+    kill = []
+    for v in bm.verts:
+        p = (mw @ v.co) - c
+        if pred(p.x, p.y, p.z): kill.append(v)
+    bmesh.ops.delete(bm, geom=kill, context="VERTS"); bm.to_mesh(obj.data); bm.free(); obj.data.update()
+
+
+def hair_cap(M, r=0.29, low=-0.2, face=0.02, sy=1.0, name="Cap"):
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=r, segments=24, ring_count=14, location=(0, 0.02, HEAD_Z + 0.04))
+    hr = bpy.context.object; hr.name = name; hr.scale = (1, sy, 1); bpy.context.view_layer.update(); assign(hr, M["hair"])
+    cut_verts(hr, (0, 0.02, HEAD_Z + 0.04), lambda x, y, z: (y < -0.05 and z < face) or z < low); shade_smooth(hr)
+    return hr
+
+
+def build_avatar_parts():
+    s = new_scene("avatar_parts"); M = avatar_mats()
+    H = HEAD_Z
+    # ---- outfits
+    o = [cone(0.4, 0.16, 0.72, (0, 0, 0.76), M["o1"], verts=14, name="Body")]
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.385, minor_radius=0.035, major_segments=24, minor_segments=6, location=(0, 0, 0.42))
+    o.append(bpy.context.object); assign(o[-1], M["o2"]); o.append(ico(0.045, (0, -0.2, 1.02), M["gold"], 1, name="Clasp"))
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.3, segments=20, ring_count=12, location=(0, 0.08, 1.24))
+    hood = bpy.context.object; hood.name = "HoodDown"; assign(hood, M["o1"])
+    cut_verts(hood, (0, 0.08, 1.24), lambda x, y, z: y < 0.06 or z > -0.02)
+    o.append(hood); shade_smooth(o[0])
+    group("outfit_cloak", o)
+
+    o = [cyl(0.19, 0.58, (0, 0, 0.83), verts=16, m=M["skin"], name="Torso")]
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.215, depth=0.5, vertices=16, location=(0, 0, 0.86))
+    v = bpy.context.object; v.name = "Vest"; assign(v, M["o1"])
+    bm = bmesh.new(); bm.from_mesh(v.data)
+    bmesh.ops.delete(bm, geom=[f for f in bm.faces if f.calc_center_median().y < -0.12 or abs(f.normal.z) > 0.5], context="FACES")
+    bm.to_mesh(v.data); bm.free()
+    sol = v.modifiers.new("s", "SOLIDIFY"); sol.thickness = 0.025
+    o.append(v)
+    o.append(cyl(0.225, 0.22, (0, 0, 0.52), verts=16, m=M["o2"], name="Shorts"))
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.215, minor_radius=0.035, major_segments=20, minor_segments=6, location=(0, 0, 0.64))
+    o.append(bpy.context.object); assign(o[-1], M["hatb"]); o[-1].name = "Sash"
+    o.append(box((0.08, 0.05, 0.16), (0.15, -0.15, 0.56), M["hatb"], "SashTail", rot=(0, 0.3, 0)))
+    group("outfit_vest", o)
+
+    o = [cone(0.5, 0.17, 1.05, (0, 0, 0.6), M["o1"], verts=18, name="Gown")]
+    shade_smooth(o[0])
+    for z, r in ((0.1, 0.48), (0.42, 0.37)):
+        bpy.ops.mesh.primitive_torus_add(major_radius=r, minor_radius=0.03, major_segments=28, minor_segments=6, location=(0, 0, z))
+        o.append(bpy.context.object); assign(o[-1], M["o2"])
+    o.append(cyl(0.2, 0.14, (0, 0, 0.95), verts=16, m=M["o2"], name="Corset"))
+    for i in range(10):  # ruffled collar
+        a = i / 10 * math.tau
+        o.append(ico(0.06, (math.cos(a) * 0.17, math.sin(a) * 0.17, 1.08), M["o2"], 1, scale=(1, 1, 0.6), name="Ruffle"))
+    group("outfit_gown", o)
+
+    o = [box((0.42, 0.34, 0.6), (0, 0, 0.82), M["o1"], "Jacket")]
+    bev = o[0].modifiers.new("b", "BEVEL"); bev.width = 0.08; bev.segments = 3
+    o.append(box((0.03, 0.02, 0.56), (0, -0.175, 0.82), M["o2"], "Zip"))
+    o.append(box((0.44, 0.36, 0.08), (0, 0, 0.54), M["o2"], "Hem"))
+    for sx in (-1, 1): o.append(box((0.1, 0.02, 0.08), (sx * 0.11, -0.175, 0.7), M["o2"], "Pocket"))
+    group("outfit_jacket", o)
+
+    # ---- hair (fringe + "Tuft" pieces get hidden under hats)
+    o = [hair_cap(M)]
+    for x, rz in ((-0.12, 0.35), (-0.03, 0.05), (0.07, -0.25), (0.15, -0.5)):
+        o.append(cone(0.075, 0, 0.2, (x, -0.21, H + 0.08), M["hair"], verts=5, rot=(math.pi * 0.92, 0, rz), name="Fringe"))
+    o.append(cone(0.05, 0, 0.22, (0.04, 0.0, H + 0.34), M["hair"], verts=5, rot=(-0.4, 0.3, 0), name="Tuft"))
+    o.append(cone(0.04, 0, 0.16, (-0.05, 0.03, H + 0.32), M["hair"], verts=5, rot=(-0.2, -0.5, 0), name="Tuft"))
+    group("hair_spiky", o)
+
+    o = [hair_cap(M, r=0.3)]
+    rnd = random.Random(4)
+    for i in range(16):  # messy spikes all over the top and back
+        th = rnd.uniform(0.15, 1.35); ph = rnd.uniform(0, math.tau)
+        d = Vector((math.sin(th) * math.cos(ph), math.sin(th) * math.sin(ph), math.cos(th)))
+        if d.y < -0.35 and d.z < 0.6: continue
+        c = cone(0.07, 0, 0.18, (d.x * 0.27, 0.02 + d.y * 0.27, H + 0.04 + d.z * 0.27), M["hair"], verts=5, name="Tuft")
+        c.rotation_mode = "QUATERNION"; c.rotation_quaternion = Vector((0, 0, 1)).rotation_difference(d)
+        o.append(c)
+    for x in (-0.15, -0.07, 0.01, 0.09, 0.16):
+        o.append(cone(0.07, 0, 0.17, (x, -0.22, H + 0.1), M["hair"], verts=5, rot=(math.pi * 0.9, 0, -x * 2), name="Fringe"))
+    group("hair_messy", o)
+
+    o = [hair_cap(M)]
+    back = box((0.5, 0.12, 0.85), (0, 0.2, H - 0.32), M["hair"], "LongBack")
+    for vtx in back.data.vertices:
+        if vtx.co.z < 0: vtx.co.x *= 0.75
+    o.append(back)
+    for sx in (-1, 1): o.append(box((0.08, 0.1, 0.55), (sx * 0.25, -0.08, H - 0.2), M["hair"], "SideLock"))
+    o.append(box((0.42, 0.08, 0.1), (0, -0.23, H + 0.16), M["hair"], "Bangs"))
+    group("hair_long", o)
+
+    o = [hair_cap(M, r=0.31, low=-0.3, face=0.02)]
+    o.append(box((0.4, 0.08, 0.09), (0, -0.24, H + 0.15), M["hair"], "Bangs"))
+    group("hair_bob", o)
+
+    o = [hair_cap(M)]
+    o.append(ico(0.05, (0, 0.27, H + 0.05), M["hatb"], 1, name="Tie"))
+    pt = cone(0.11, 0.02, 0.6, (0, 0.38, H - 0.2), M["hair"], verts=8, rot=(-0.35, 0, 0), name="Ponytail"); shade_smooth(pt); o.append(pt)
+    for x, rz in ((-0.1, 0.3), (0.0, 0.0), (0.1, -0.3)):
+        o.append(cone(0.08, 0, 0.18, (x, -0.21, H + 0.09), M["hair"], verts=5, rot=(math.pi * 0.92, 0, rz), name="Fringe"))
+    group("hair_ponytail", o)
+
+    o = [hair_cap(M)]
+    for sx in (-1, 1): o.append(ico(0.12, (sx * 0.2, 0.05, H + 0.25), M["hair"], 2, name="Tuft"))
+    o.append(box((0.4, 0.08, 0.09), (0, -0.24, H + 0.15), M["hair"], "Bangs"))
+    group("hair_buns", o)
+
+    # ---- hats
+    o = [cyl(0.5, 0.03, (0, 0, H + 0.2), verts=28, m=M["hatm"], name="Brim")]
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.28, segments=20, ring_count=10, location=(0, 0, H + 0.2))
+    d = bpy.context.object; d.name = "Dome"; assign(d, M["hatm"])
+    cut_verts(d, (0, 0, H + 0.2), lambda x, y, z: z < -0.01)
+    d.scale = (1, 1, 0.8); shade_smooth(d); o.append(d)
+    o.append(cyl(0.285, 0.07, (0, 0, H + 0.25), verts=24, m=M["hatb"], name="Band"))
+    group("hat_straw", o)
+
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.34, segments=20, ring_count=12, location=(0, 0.03, H + 0.02))
+    hd = bpy.context.object; hd.name = "HoodUp"; assign(hd, M["hatm"])
+    cut_verts(hd, (0, 0.03, H + 0.02), lambda x, y, z: y < -0.12 and abs(x) < 0.24 and z < 0.22)
+    shade_smooth(hd)
+    tip = cone(0.1, 0, 0.25, (0, 0.28, H + 0.15), M["hatm"], verts=6, rot=(-1.2, 0, 0), name="HoodTip")
+    group("hat_hood", [hd, tip])
+
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.3, segments=20, ring_count=10, location=(0, 0.02, H + 0.08))
+    b = bpy.context.object; b.name = "Beanie"; assign(b, M["hatm"])
+    cut_verts(b, (0, 0.02, H + 0.08), lambda x, y, z: z < 0.0); shade_smooth(b)
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.29, minor_radius=0.05, major_segments=24, minor_segments=6, location=(0, 0.02, H + 0.1))
+    rim = bpy.context.object; assign(rim, M["hatb"])
+    group("hat_beanie", [b, rim, ico(0.08, (0, 0.02, H + 0.4), M["hatb"], 1, name="Pom")])
+
+    o = [cyl(0.2, 0.08, (0, 0, H + 0.3), verts=16, m=M["gold"], name="CrownRing")]
+    for i in range(6):
+        a = i / 6 * math.tau
+        o.append(cone(0.05, 0, 0.14, (math.cos(a) * 0.19, math.sin(a) * 0.19, H + 0.4), M["gold"], verts=4, name="Spike"))
+        o.append(ico(0.025, (math.cos(a) * 0.2, math.sin(a) * 0.2, H + 0.3), M["hatb"], 1, name="Jewel"))
+    group("hat_crown", o)
+
+    o = [cyl(0.58, 0.025, (0, 0, H + 0.22), verts=32, m=M["hatm"], name="WideBrim")]
+    o.append(cyl(0.26, 0.2, (0, 0, H + 0.33), verts=20, m=M["hatm"], name="WideCrown"))
+    o.append(cyl(0.265, 0.06, (0, 0, H + 0.26), verts=20, m=M["hatb"], name="Ribbon"))
+    for i, (x, y) in enumerate(((0.22, -0.12), (0.27, -0.02), (0.2, -0.2))):
+        o.append(ico(0.06, (x, y, H + 0.28), M["hatb"] if i else M["gold"], 1, name="Flower"))
+    o.append(box((0.06, 0.02, 0.35), (0.24, 0.12, H + 0.05), M["hatb"], "RibbonTail", rot=(0.2, 0, 0.1)))
+    root = group("hat_wide", o); root.rotation_euler = (0.12, -0.12, 0)
+    bpy.ops.object.select_all(action="DESELECT")
+
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.22, minor_radius=0.025, major_segments=32, minor_segments=6, location=(0, 0.05, H + 0.45))
+    hl = bpy.context.object; hl.name = "Halo"; assign(hl, M["halo"])
+    group("hat_halo", [hl])
+
+    o = []
+    for sx in (-1, 1):
+        e = cone(0.1, 0, 0.18, (sx * 0.16, 0.0, H + 0.3), M["hair"], verts=4, rot=(0, sx * 0.35, 0), name="Ear"); o.append(e)
+        o.append(cone(0.055, 0, 0.1, (sx * 0.158, -0.025, H + 0.29), M["blush"], verts=4, rot=(0, sx * 0.35, 0), name="EarInner"))
+    group("hat_ears", o)
+
+    # ---- face details
+    sc = [box((0.012, 0.01, 0.07), (0.1, -0.245, H - 0.06), M["scar"], "ScarLine")]
+    for dz in (-0.02, 0.02): sc.append(box((0.04, 0.01, 0.01), (0.1, -0.246, H - 0.06 + dz), M["scar"], "Stitch"))
+    group("face_scar", sc)
+    o = []
+    for sx in (-1, 1):
+        b = ico(0.04, (sx * 0.15, -0.215, H - 0.04), M["blush"], 1, scale=(1.3, 0.3, 0.7), name="Blush"); o.append(b)
+    group("face_blush", o)
+    o = []
+    for sx in (-1, 1):
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.065, minor_radius=0.01, major_segments=20, minor_segments=4,
+                                         location=(sx * 0.095, -0.262, H - 0.01), rotation=(math.pi / 2, 0, 0))
+        o.append(bpy.context.object); assign(o[-1], M["ink"])
+    o.append(box((0.06, 0.012, 0.012), (0, -0.262, H), M["ink"], "Bridge"))
+    group("face_glasses", o)
+    finish("avatar_parts", s)
 
 
 # ---------------------------------------------------------------- shared environment pieces
@@ -514,5 +685,5 @@ def build_lobby():
 
 def build_all():
     os.makedirs(OUT, exist_ok=True)
-    for f in (build_racket_round, build_racket_blade, build_racket_wing, build_shuttle, build_avatar, build_court, build_backdrop, build_lobby):
+    for f in (build_racket_round, build_racket_blade, build_racket_wing, build_shuttle, build_avatar, build_avatar_parts, build_court, build_backdrop, build_lobby):
         f()

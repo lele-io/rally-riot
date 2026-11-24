@@ -1,8 +1,9 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { RACKET } from "./rackets.js";
+import { normalizeLook, HATS_COVER_HAIR } from "./looks.js";
 
-const NAMES = ["court", "lobby", "backdrop", "avatar", "shuttle", "racket_round", "racket_blade", "racket_wing"];
+const NAMES = ["court", "lobby", "backdrop", "avatar", "avatar_parts", "shuttle", "racket_round", "racket_blade", "racket_wing"];
 const models = {};
 
 // ---- art style: cel shading (3-band toon ramp) + inverted-hull ink outlines
@@ -83,6 +84,7 @@ export async function loadAssets(onProgress) {
   models.backdrop.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; } });
   // ink lines on characters, gear and the bigger props
   addOutlines(models.avatar, (o) => /Eye|Shine/.test(o.name));
+  addOutlines(models.avatar_parts, (o) => /Scar|Stitch|Blush|Halo|Ear|Jewel|Flower|Bridge|Torus/.test(o.name) || o.parent?.name === "face_glasses");
   addOutlines(models.shuttle);
   for (const r of ["racket_round", "racket_blade", "racket_wing"]) addOutlines(models[r], (o) => /Strings/.test(o.name));
   for (const n of ["court", "lobby"]) addOutlines(models[n], (o) => flat.test(o.name) || /tile|tuft|Banner/i.test(o.name) || o.material.emissiveIntensity > 1.5);
@@ -105,8 +107,29 @@ function cloneWith(name, tint = {}) {
 
 export const getModel = (name) => cloneWith(name);
 
-export function makeAvatar(teamColor) {
-  return cloneWith("avatar", { Team: { color: teamColor } });
+// Build a character: base body + the chosen hair / outfit / hat / face parts, recolored from the look.
+export function makeAvatar(look, teamColor) {
+  const L = normalizeLook(look);
+  const root = models.avatar.clone(true);
+  const add = (name) => { const src = models.avatar_parts.getObjectByName(name); if (src) root.add(src.clone(true)); return src; };
+  add("outfit_" + L.outfit); add("hair_" + L.hair);
+  if (L.hat !== "none") add("hat_" + L.hat);
+  if (L.face !== "none") add("face_" + L.face);
+  if (HATS_COVER_HAIR.has(L.hat)) root.traverse((o) => { if (/^Tuft/.test(o.name)) o.visible = false; });
+  const bare = L.outfit === "vest";
+  const legs = { cloak: "#2b2033", vest: L.skin, gown: L.c1, jacket: L.c2 }[L.outfit];
+  const colors = { Skin: L.skin, Hair: L.hairColor, Eye: L.eyes, Outfit1: L.c1, Outfit2: L.c2, HatMain: L.hatColor, HatBand: L.hatBand,
+    Team: teamColor, Legs: legs, Sleeve: bare ? L.skin : L.c1 };
+  const cache = {};
+  root.traverse((m) => {
+    if (!m.isMesh || m.userData.outline) return;
+    const n = m.material.name, c = colors[n];
+    if (c == null) return;
+    m.material = cache[n] || (cache[n] = Object.assign(m.material.clone(), {}));
+    m.material.color.set(c);
+  });
+  root.userData.look = L;
+  return root;
 }
 
 export function makeRacket(id) {

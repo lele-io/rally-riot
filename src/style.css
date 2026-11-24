@@ -194,3 +194,16 @@ details summary { cursor: pointer; margin-top: 10px; font-weight: 800; color: va
   .topbar { left: 14px; align-items: stretch; }
   .reveal .card .rgrid { grid-template-columns: repeat(3, 1fr); }
 }
+.lockbadge { display: none; }
+.hud .crosshair { display: block; position: absolute; left: 50%; top: 41%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border: 3px solid #fff; border-radius: 50%; box-shadow: 0 0 0 2px var(--ink), inset 0 0 0 2px var(--ink); }
+.hud .crosshair::after { content: ""; position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; background: #fff; border-radius: 50%; }
+.hud.unlocked .lockbadge { display: block; position: absolute; top: 84px; left: 50%; transform: translateX(-50%); font: 15px "Lilita One"; color: var(--ink); background: var(--sun); border: 3px solid var(--ink); border-radius: 99px; padding: 3px 12px; box-shadow: 0 3px 0 var(--ink); }
+.chipsel { display: flex; flex-wrap: wrap; gap: 6px; }
+.opt { border: 2px solid var(--ink); background: #ffffff12; color: var(--paper); font-family: "Lilita One"; font-size: 15px; padding: 6px 12px; border-radius: 10px; box-shadow: 0 3px 0 var(--ink); }
+.opt.on { background: var(--gold); color: var(--ink); }
+.swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+.sw { width: 28px; height: 28px; border-radius: 8px; border: 2px solid var(--ink); box-shadow: 0 2px 0 var(--ink); padding: 0; }
+.sw.on { outline: 3px solid var(--gold); outline-offset: 1px; }
+.sw.custom { position: relative; overflow: hidden; background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red); cursor: pointer; }
+.sw.custom input { position: absolute; inset: -6px; opacity: 0; cursor: pointer; }
+.sbtn.custom { background: linear-gradient(180deg, #d9c6ff, #a98af0); }

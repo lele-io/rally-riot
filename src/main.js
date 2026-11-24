@@ -11,7 +11,8 @@ import { Input } from "./input.js";
 import { Match } from "./match.js";
 import { Lobby } from "./lobby.js";
 import { MatchHUD, h } from "./ui.js";
-import { openLoadout, openSummon, openPlay, panel, racketIcon, rarityBadge } from "./screens.js";
+import { openLoadout, openSummon, openPlay, openCustomize, panel, racketIcon, rarityBadge } from "./screens.js";
+import { normalizeLook, randomLook } from "./looks.js";
 import { RACKET, randomRacket } from "./rackets.js";
 import { profile, update } from "./save.js";
 import { audioUnlock, sfx } from "./sfx.js";
@@ -42,6 +43,7 @@ const ICON = {
   shop: `<svg viewBox="0 0 24 24"><path d="M3 4h3l2.2 10.5h10.3L21 7H7.2" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><circle cx="9.5" cy="19" r="1.8" fill="currentColor"/><circle cx="17" cy="19" r="1.8" fill="currentColor"/></svg>`,
   summon: `<svg viewBox="0 0 24 24"><path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4z" fill="currentColor"/></svg>`,
   loadout: `<svg viewBox="0 0 24 24"><ellipse cx="10" cy="9" rx="5.5" ry="6.5" transform="rotate(-35 10 9)" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M14 14l6.5 6.5" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>`,
+  custom: `<svg viewBox="0 0 24 24"><circle cx="12" cy="7.5" r="4.5" fill="currentColor"/><path d="M3.5 21c.6-5 4.2-7.5 8.5-7.5s7.9 2.5 8.5 7.5z" fill="currentColor"/><path d="M16 2.5l1 2 2 .3-1.5 1.4.4 2-1.9-1-1.9 1 .4-2L13 4.8l2-.3z" fill="#fff" stroke="currentColor" stroke-width=".6"/></svg>`,
   help: `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9.3 9.2a2.8 2.8 0 1 1 3.9 2.6c-.8.4-1.2 1-1.2 1.9v.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17.3" r="1.2" fill="currentColor"/></svg>`,
 };
 const icon = (k) => { const s = h("span", { class: "ico" }); s.innerHTML = ICON[k]; return s; };
@@ -76,6 +78,7 @@ class Game {
   }
 
   equipped() { return profile().equipped; }
+  look() { return normalizeLook(profile().look); }
 
   setView(view) {
     if (this.view) this.view.dispose();
@@ -126,7 +129,8 @@ class Game {
       h("div", { class: "bottombar" },
         small("shop", "shop", "SHOP", "shop"),
         small("summon", "summon", "SUMMON", "summon"),
-        small("loadout", "loadout", "LOADOUT", "loadout")));
+        small("loadout", "loadout", "LOADOUT", "loadout"),
+        small("custom", "custom", "CUSTOMIZE", "customize")));
     this.drawTopbar();
   }
 
@@ -155,6 +159,7 @@ class Game {
     else if (id === "friends") pn = panel(this.ui, "Play with Friends", null, privateTab(this));
     else if (id === "shop") pn = openShop(this.ui, () => this.drawTopbar());
     else if (id === "howto") pn = panel(this.ui, "How to play", null, howTo());
+    else if (id === "customize") pn = openCustomize(this.ui, L, () => {});
     pn.wrap.classList.add("panel-" + id);
     const c = pn.close;
     pn.close = () => { c(); L.menuOpen = false; this.ui.classList.remove("panel-open"); if (this.menu === pn) this.menu = null; };
@@ -167,15 +172,15 @@ class Game {
     const names = [...BOT_NAMES].sort(() => Math.random() - 0.5);
     const tier = level < 0.3 ? 1 : level < 0.7 ? 3 : 5;
     const out = [];
-    for (let i = 0; i < myTeamBots; i++) out.push({ id: "bt" + i, name: names.pop(), team: 0, racket: randomRacket(tier), kind: "bot", level });
-    for (let i = 0; i < size; i++) out.push({ id: "bo" + i, name: names.pop(), team: 1, racket: randomRacket(tier), kind: "bot", level });
+    for (let i = 0; i < myTeamBots; i++) out.push({ id: "bt" + i, name: names.pop(), team: 0, racket: randomRacket(tier), kind: "bot", level, look: randomLook() });
+    for (let i = 0; i < size; i++) out.push({ id: "bo" + i, name: names.pop(), team: 1, racket: randomRacket(tier), kind: "bot", level, look: randomLook() });
     return out;
   }
 
   startMatch(cfg) {
     const p = profile();
     this.clearUI(); this.lobby = null; this.menu = null; this.topbar = null;
-    const players = cfg.players || [{ id: "me", name: p.name, team: 0, racket: p.equipped, kind: "local" }, ...this.botPlayers(cfg.size, cfg.level, cfg.size - 1)];
+    const players = cfg.players || [{ id: "me", name: p.name, team: 0, racket: p.equipped, kind: "local", look: this.look() }, ...this.botPlayers(cfg.size, cfg.level, cfg.size - 1)];
     const names = cfg.names || (cfg.size === 1 ? [p.name, players[1].name] : ["YOUR TEAM", "RIVALS"]);
     const localTeam = players.find((q) => q.id === (cfg.localId || "me"))?.team || 0;
     const hud = new MatchHUD(this.ui, names, localTeam === 1);
@@ -210,8 +215,8 @@ function howTo() {
   return h("div", { class: "col", style: "gap:10px" },
     h("div", { class: "lbl" }, "Controls"),
     k("W A S D", "Move (relative to the camera)"), k("SPACE", "Jump"), k("CLICK", "Swing — hold to charge a power swing, release to hit"),
-    k("SHIFT", "Dash — goes even farther in mid-air"), k("MOUSE", "Aim: the ring on the far court is where your shot lands"),
-    k("RIGHT-DRAG", "Turn the camera"), k("WHEEL", "Zoom in / out"),
+    k("SHIFT", "Dash — goes even farther in mid-air"), k("MOUSE", "Look around — the crosshair aims; the ring on the far court is where your shot lands"),
+    k("HOLD ALT", "Free your mouse cursor (let go to lock the camera again)"), k("WHEEL", "Zoom in / out"),
     h("div", { class: "lbl", style: "margin-top:8px" }, "Tips"),
     h("ul", { class: "notes" },
       h("li", {}, "Stand near the middle of your half so you can reach anything."),

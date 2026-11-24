@@ -17,8 +17,13 @@ Do NOT modify `lele-io/cupidium-relay` or `lele-io/one-in-a-cupidium`.
 - Art style (owner asked: Zelda × Wuthering Waves × Silksong, indie): toon shading (all glTF materials → MeshToonMaterial
   with a 4-band ramp in assets.js), inverted-hull ink outlines (`outlineMaterial`), runtime palette overrides (`recolor`),
   warm grade + vignette pass. UI: chunky slanted Roblox-style buttons (Lilita One) + ink/gold filigree panels.
-- Controls: WASD (camera-relative), Space jump, click swing/hold charge, Shift dash, mouse aims, right-drag orbit camera,
-  wheel zoom (`match.cam` yaw/pitch/dist).
+- Controls: WASD (camera-relative), mouse look (always-locked camera via pointer lock, like Wuthering Waves; HOLD Alt frees the
+  cursor, click re-locks; falls back to normal clicks if lock is refused), crosshair aim (`CROSSHAIR_Y` in match.js must match
+  CSS `.crosshair` top), click swing/hold charge (charges whenever held and the racket is ready), Space jump, Shift dash, wheel zoom.
+- Customization: `looks.js` (options/palettes/`normalizeLook`/`randomLook`), `assets.makeAvatar(look, teamColor)` clones the base
+  avatar.glb + parts from avatar_parts.glb (roots `outfit_*`, `hair_*`, `hat_*`, `face_*`) and recolors materials Skin/Hair/Eye/
+  Outfit1/Outfit2/HatMain/HatBand/Legs/Sleeve/Team. Saved as `profile.look`; sent in online room "hi"/roster. Bots get random looks.
+  No named presets of other studios' characters (owner can build look-alikes from generic parts).
 - `player.js` kinematic capsule + Rapier character controller; swing state idle→charge→swing(0.17s window)→recover; dash
   (air dash ×1.55 farther); arm animation by rotating `ArmR` (racket parented to `HandR`).
 - `match.js` Rapier world, serve/rally/point/over flow, rally scoring to 11 (win by 2, cap +4), hit → `computeShot` → `applyHit`.
@@ -42,7 +47,8 @@ Do NOT modify `lele-io/cupidium-relay` or `lele-io/one-in-a-cupidium`.
   (Quick match/ranked were removed at the owner's request; the relay still supports `mm-*` queues but nothing uses them.)
 - `economy.js` Yen payouts (`payout`, every match pays), Shop (Spin ¥250, ×10 ¥2250, Lucky ¥1200, daily free Spin).
 - Meta shifts: edit `PATCH` in rackets.js (version, notes, per-racket stat `adjust`).
-- Model material names the code relies on: avatar `Team`; racket `Frame`, `Accent`, `Grip`, `Strings`; lobby `Portal`, `Crystal`.
+- Blender mesh cut-outs use `cut_verts` (world-space, origin-independent) — local v.co checks silently failed before.
+- Model material names the code relies on: avatar `Team` (+ customization names above); racket `Frame`, `Accent`, `Grip`, `Strings`; lobby `Portal`, `Crystal`.
 
 ## Gotchas
 - `Element.append(null)` inserts the text "null" — only `h()` filters nulls.
