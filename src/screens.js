@@ -161,13 +161,13 @@ export function openPlay(host, start, extraTabs = []) {
   const casual = h("div", { class: "col", style: "align-items:flex-start;gap:12px" },
     h("div", { class: "lbl" }, "Mode"), seg([["1v1", 1], ["2v2", 2], ["3v3", 3]], () => size, (v) => (size = v)),
     h("div", { class: "lbl" }, "Bot skill"), seg([["Easy", 0.2], ["Normal", 0.5], ["Hard", 0.85]], () => level, (v) => { level = v; update((q) => (q.settings.bot = v)); }),
-    h("button", { class: "btn hot", style: "margin-top:6px;font-size:18px;padding:14px 30px", onclick: () => start({ type: "casual", size, level }) }, "PLAY VS BOTS"));
+    h("button", { class: "btn hot", style: "margin-top:6px;font-size:20px;padding:14px 34px", onclick: () => start({ type: "casual", size, level }) }, "START"));
   const tabs = [["Casual", casual], ...extraTabs];
   const body = h("div", {});
   const bar = h("div", { class: "tabs" });
   const show = (k) => { body.innerHTML = ""; body.append(tabs[k][1]); bar.querySelectorAll("button").forEach((b, j) => b.classList.toggle("on", j === k)); };
   tabs.forEach(([n], k) => bar.append(h("button", { onclick: () => { sfx.ui(); show(k); } }, n)));
-  const pn = panel(host, "Play", null, bar, body);
+  const pn = tabs.length > 1 ? panel(host, "Play", null, bar, body) : panel(host, "Play vs Bots", null, body);
   show(0);
   return pn;
 }

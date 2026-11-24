@@ -1,7 +1,7 @@
 // Shuttle flight model + shot solver. Pure math (no three.js) so the bot, the network code and
 // tools/tune.mjs can all run the exact same simulation. Units: metres, seconds. y is up,
 // x runs along the court (net at x = 0), z across it.
-export const COURT = { halfL: 9, halfW: 5, netH: 1.55, arenaX: 21.6, arenaZ: 14.6, ceiling: 10 };
+export const COURT = { halfL: 9, halfW: 5, netH: 1.55, arenaX: 21.6, arenaZ: 14.6, ceiling: 18 };
 export const PHYS = {
   g: 13,          // a bit more than real gravity: snappier rallies
   drag: 0.05,     // quadratic drag k in a = -k|v|v  (terminal speed ~16 m/s)

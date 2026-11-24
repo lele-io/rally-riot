@@ -3,6 +3,7 @@ import { getModel } from "./assets.js";
 import { Player } from "./player.js";
 import { BotBrain } from "./bot.js";
 import { FX } from "./fx.js";
+import { buildEnv } from "./env.js";
 import { sfx } from "./sfx.js";
 import { COURT, PHYS, step, solveShot } from "./shuttle.js";
 import { RACKET } from "./rackets.js";
@@ -21,8 +22,6 @@ export class Match {
   constructor(game, opts) {
     this.game = game; this.opts = opts; this.RAPIER = game.RAPIER; this.ui = opts.ui;
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color("#0d0b18");
-    this.scene.fog = new THREE.Fog("#0d0b18", 30, 70);
     this.world = new this.RAPIER.World({ x: 0, y: 0, z: 0 });
     this.net = opts.net || null;
     this.authority = !this.net || opts.isHost; // decides points
@@ -40,14 +39,7 @@ export class Match {
   build() {
     const s = this.scene, R = this.RAPIER, w = this.world;
     s.add(getModel("court"));
-    s.add(new THREE.HemisphereLight("#bcd4ff", "#2a1f3d", 0.55));
-    const sun = new THREE.DirectionalLight("#fff4e0", 1.5);
-    sun.position.set(-6, 16, 8); sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
-    Object.assign(sun.shadow.camera, { left: -14, right: 14, top: 10, bottom: -10, near: 1, far: 40 });
-    sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.03;
-    s.add(sun);
-    for (const x of [-8, 0, 8]) { const l = new THREE.PointLight("#ffe9c8", 14, 20, 1.8); l.position.set(x, 8.5, 0); s.add(l); }
+    this.env = buildEnv(s, { shadowSize: 14 });
 
     // static colliders: floor, arena walls, and an invisible divider so nobody crosses the net
     const fixed = (hx, hy, hz, x, y, z) => w.createCollider(R.ColliderDesc.cuboid(hx, hy, hz).setTranslation(x, y, z));
@@ -58,15 +50,15 @@ export class Match {
 
     // shuttle + its shadow blob
     this.shuttleObj = getModel("shuttle"); this.shuttleObj.scale.setScalar(SHUTTLE_SCALE); s.add(this.shuttleObj);
-    this.blob = new THREE.Mesh(new THREE.CircleGeometry(0.22, 20), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: 0.45, depthWrite: false }));
+    this.blob = new THREE.Mesh(new THREE.CircleGeometry(0.22, 20), new THREE.MeshBasicMaterial({ color: "#3a2a40", transparent: true, opacity: 0.45, depthWrite: false }));
     this.blob.rotation.x = -Math.PI / 2; s.add(this.blob);
     // aim reticle on the far court
     this.reticle = new THREE.Group();
-    const rm = new THREE.MeshBasicMaterial({ color: "#ffffff", transparent: true, opacity: 0.85, depthWrite: false });
+    const rm = new THREE.MeshBasicMaterial({ color: "#fff6e0", transparent: true, opacity: 0.95, depthWrite: false });
     const ring = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.52, 32), rm); ring.rotation.x = -Math.PI / 2; this.reticle.add(ring);
     this.reticleCharge = new THREE.Mesh(new THREE.RingGeometry(0.56, 0.7, 32, 1, 0, 0.01), new THREE.MeshBasicMaterial({ color: "#ffd23d", transparent: true, depthWrite: false }));
     this.reticleCharge.rotation.x = -Math.PI / 2; this.reticle.add(this.reticleCharge);
-    this.reticle.position.y = 0.04; s.add(this.reticle);
+    this.reticle.position.y = 0.08; s.add(this.reticle);
     this.fx = new FX(s);
 
     this.players = this.opts.players.map((pd, i) => new Player(this, { ...pd, slot: i }));
@@ -77,8 +69,10 @@ export class Match {
     this.aim = [-this.viewSide * 6, 0];
 
     this.camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 200);
-    this.camPos = new THREE.Vector3(this.viewSide * 17, 8.5, 0); this.camLook = new THREE.Vector3(-this.viewSide * 1, 0.8, 0);
-    this.camera.position.copy(this.camPos); this.camera.lookAt(this.camLook);
+    // orbit camera state: start behind our player looking at the net
+    this.cam = { yaw: this.viewSide < 0 ? 0 : Math.PI, pitch: 0.4, dist: 11 };
+    this.camLook = new THREE.Vector3(this.viewSide * 5, 1.5, 0);
+    this.camera.position.set(this.viewSide * 15, 6, 0); this.camera.lookAt(this.camLook);
     this.ray = new THREE.Raycaster(); this.plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 
     if (this.net) this.net.match = this;
@@ -329,12 +323,13 @@ export class Match {
 
   // ---------------------------------------------------------------- local player controls
   localInput(input) {
-    const s = this.viewSide; // camera sits behind our half; W = toward the net
+    const s = this.viewSide;
     let fwd = 0, right = 0;
     if (input.down("KeyW")) fwd += 1; if (input.down("KeyS")) fwd -= 1;
     if (input.down("KeyD")) right += 1; if (input.down("KeyA")) right -= 1;
-    // forward = -s on x; right of that (camera view) = s on z... derived from left=(vz,0,-vx)
-    const mx = -s * fwd, mz = -s * right;
+    // camera-relative, like Roblox: W walks where the camera looks
+    const fx = Math.cos(this.cam.yaw), fz = Math.sin(this.cam.yaw);
+    const mx = fx * fwd - fz * right, mz = fz * fwd + fx * right;
     // aim: mouse ray onto the floor, clamped to the far court
     if (input.mouse.moved) {
       this.ray.setFromCamera(new THREE.Vector2(input.mouse.x, input.mouse.y), this.camera);
@@ -345,7 +340,7 @@ export class Match {
       }
     }
     return {
-      mx, mz, jump: input.pressed("Space"), dash: input.pressed("KeyQ"),
+      mx, mz, jump: input.pressed("Space"), dash: input.pressed("ShiftLeft") || input.pressed("ShiftRight"),
       swing: input.mouse.down && input.enabled, aim: this.aim,
     };
   }
@@ -359,9 +354,10 @@ export class Match {
     const v = new THREE.Vector3(...sh.v);
     if (v.lengthSq() > 0.5) this.shuttleObj.quaternion.slerp(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), v.normalize().negate()), 0.5);
     else this.shuttleObj.quaternion.slerp(new THREE.Quaternion(), 0.2);
-    this.blob.position.set(sp.x, 0.03, sp.z);
+    this.blob.position.set(sp.x, 0.065, sp.z);
     this.blob.scale.setScalar(1 + sp.y * 0.08); this.blob.material.opacity = Math.max(0.15, 0.5 - sp.y * 0.04);
     this.fx.update(dt, sp, sh.flying);
+    this.env.update(dt);
 
     // reticle
     const L = this.local;
@@ -376,13 +372,18 @@ export class Match {
       this.ui?.hud(L, this);
     }
 
-    // camera: behind our baseline, follows the local player a bit
-    const s = this.viewSide, fz = L ? L.pos.z : 0, fxp = L ? L.pos.x : s * 5;
-    const want = new THREE.Vector3(s * 15 + (fxp - s * 5) * 0.3, 7.4, fz * 0.4);
-    const look = new THREE.Vector3(-s * 2 + (fxp - s * 5) * 0.2, 0.9, fz * 0.3);
-    this.camPos.lerp(want, 1 - Math.exp(-dt * 4)); this.camLook.lerp(look, 1 - Math.exp(-dt * 4));
+    // third-person orbit camera (Roblox-style): right-drag to turn, wheel to zoom, follows your player
+    const c = this.cam, look = this.game.input.takeLook();
+    c.yaw += look.dx * 0.0055;
+    c.pitch = THREE.MathUtils.clamp(c.pitch + look.dy * 0.0045, -0.25, 1.4);
+    c.dist = THREE.MathUtils.clamp(c.dist * Math.pow(1.0012, look.wheel), 3, 30);
+    const focus = L ? L.root.position : new THREE.Vector3(this.viewSide * 5, 0, 0);
+    this.camLook.lerp(new THREE.Vector3(focus.x, focus.y + 1.5, focus.z), 1 - Math.exp(-dt * 12));
+    const f = new THREE.Vector3(Math.cos(c.yaw), 0, Math.sin(c.yaw));
+    const pos = this.camLook.clone().addScaledVector(f, -c.dist * Math.cos(c.pitch)).add(new THREE.Vector3(0, c.dist * Math.sin(c.pitch), 0));
+    pos.y = Math.max(0.4, pos.y);
     const sk = this.fx.shakeAmt;
-    this.camera.position.copy(this.camPos).add(new THREE.Vector3((Math.random() - 0.5) * sk, (Math.random() - 0.5) * sk, (Math.random() - 0.5) * sk));
+    this.camera.position.copy(pos).add(new THREE.Vector3((Math.random() - 0.5) * sk, (Math.random() - 0.5) * sk, (Math.random() - 0.5) * sk));
     this.camera.lookAt(this.camLook);
   }
 
@@ -390,7 +391,7 @@ export class Match {
 
   dispose() {
     for (const p of this.players) p.dispose();
-    this.fx.dispose();
+    this.fx.dispose(); this.env.dispose();
     this.world.free();
     this.scene.traverse((o) => { if (o.isMesh && o.geometry) o.geometry.dispose(); });
   }

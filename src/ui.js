@@ -24,8 +24,8 @@ export class MatchHUD {
       h("div", { class: "servehint" }),
       h("div", { class: "meters" },
         h("div", { class: "meter charge" }, h("i"), h("span", {}, "POWER")),
-        h("div", { class: "meter dash" }, h("i"), h("span", {}, "DASH  Q"))),
-      h("div", { class: "keys" }, "WASD move · Space jump · Click swing (hold = power) · Q dash · Mouse aims"));
+        h("div", { class: "meter dash" }, h("i"), h("span", {}, "DASH  SHIFT"))),
+      h("div", { class: "keys" }, "WASD move · Space jump · Click swing (hold = power) · Shift dash · Mouse aims · Right-drag camera · Wheel zoom"));
     if (flip) this.root.classList.add("flip");
     root.append(this.root);
     this.bannerT = null;

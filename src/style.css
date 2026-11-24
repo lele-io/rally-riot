@@ -1,165 +1,196 @@
+/* Rally Riot — painterly/indie look: warm parchment + ink, gold filigree lines, chunky slanted buttons. */
 :root {
-  --bg: #0d0b18; --panel: rgba(20, 16, 38, 0.86); --line: rgba(255, 255, 255, 0.12);
-  --ink: #f4f1ff; --dim: #a9a3c9; --hot: #ff4d8d; --cool: #3dd6ff; --gold: #ffd23d;
-  --t0: #3d8bff; --t1: #ff4d6d;
+  --ink: #2b2033; --ink2: #1c1524; --panel: rgba(32, 24, 42, 0.9); --line: rgba(240, 214, 160, 0.28);
+  --paper: #fbf3e2; --text: #fff8ec; --dim: #d6c6b4; --gold: #f2c76e; --gold2: #c8913b;
+  --sage: #7fcf6a; --lav: #a98af0; --teal: #5fd6c4; --coral: #ff8a7a; --sun: #ffcf5c; --sky: #7fb8ff;
+  --t0: #4f8ff0; --t1: #ef5d6c;
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); font-family: Nunito, system-ui, sans-serif; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #f2d6c0; color: var(--text); font-family: Nunito, system-ui, sans-serif; }
 canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
 #ui { position: fixed; inset: 0; pointer-events: none; }
 #ui > * { pointer-events: auto; }
 #ui .hud { pointer-events: none; }
 button { font: inherit; cursor: pointer; }
-.display { font-family: "Russo One", sans-serif; letter-spacing: 0.02em; }
+.ico { display: inline-flex; width: 1em; height: 1em; }
+.ico svg { width: 100%; height: 100%; }
 
-#loading { position: fixed; inset: 0; display: grid; place-content: center; gap: 18px; background: var(--bg); z-index: 50; transition: opacity .4s; }
+/* ---------- loading ---------- */
+#loading { position: fixed; inset: 0; display: grid; place-content: center; gap: 22px; z-index: 50; transition: opacity .5s;
+  background: radial-gradient(ellipse at 50% 30%, #ffe3c2, #f0bfa6 45%, #9a87c4); }
 #loading.done { opacity: 0; pointer-events: none; }
-.logo { font-family: "Russo One"; font-size: clamp(42px, 9vw, 96px); line-height: .9; text-align: center; font-style: italic;
-  background: linear-gradient(180deg, #fff, #ffd2ea); -webkit-background-clip: text; color: transparent; filter: drop-shadow(0 4px 0 #ff2d7a) drop-shadow(0 0 24px #ff4d8d88); }
-.logo span { display: block; background: linear-gradient(180deg, #bff4ff, #3dd6ff); -webkit-background-clip: text; filter: drop-shadow(0 4px 0 #1a64ff); }
-#loading .bar { width: 260px; height: 8px; border-radius: 9px; background: #ffffff1a; overflow: hidden; margin: 0 auto; }
-#loading .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--hot), var(--cool)); transition: width .2s; }
+#loading .bar { width: 280px; height: 14px; border-radius: 9px; background: #2b203355; border: 3px solid var(--ink); overflow: hidden; margin: 0 auto; }
+#loading .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--coral), var(--sun)); transition: width .2s; }
 
-/* ---------- HUD ---------- */
-.hud { position: absolute; inset: 0; }
-.scorebar { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); display: flex; align-items: stretch; gap: 0;
-  font-family: "Russo One"; filter: drop-shadow(0 6px 18px #0008); }
-.scorebar .team { display: flex; align-items: center; gap: 12px; padding: 6px 16px; background: var(--panel); border: 1px solid var(--line); }
-.scorebar .t0 { border-radius: 14px 0 0 14px; border-left: 5px solid var(--t0); }
-.scorebar .t1 { border-radius: 0 14px 14px 0; border-right: 5px solid var(--t1); }
-.hud.flip .t0 { border-left-color: var(--t1); } .hud.flip .t1 { border-right-color: var(--t0); }
-.scorebar b { font-size: 34px; min-width: 34px; text-align: center; }
-.scorebar .tname { font-family: Nunito; font-weight: 800; font-size: 14px; color: var(--dim); max-width: 140px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.scorebar .serving .tname::after { content: " ●"; color: var(--gold); }
-.scorebar .vs { display: grid; place-items: center; padding: 0 10px; background: #000a; font-size: 12px; color: var(--dim); }
-.banner { position: absolute; top: 26%; left: 0; right: 0; text-align: center; opacity: 0; transform: scale(.8); transition: opacity .2s, transform .25s cubic-bezier(.2, 1.6, .4, 1); }
-.banner.show { opacity: 1; transform: scale(1); }
-.banner .big { font-family: "Russo One"; font-size: clamp(40px, 8vw, 84px); font-style: italic; text-shadow: 0 5px 0 #0007, 0 0 30px currentColor; }
-.banner .sub { font-weight: 800; font-size: 18px; color: var(--ink); text-shadow: 0 2px 8px #000; }
-.pops { position: absolute; top: 40%; left: 0; right: 0; text-align: center; }
-.pop { font-family: "Russo One"; font-size: 54px; font-style: italic; animation: pop 1.1s ease-out forwards; position: absolute; left: 0; right: 0; }
-.pop.small { font-size: 28px; }
-@keyframes pop { 0% { transform: scale(2.2) rotate(-6deg); opacity: 0 } 12% { transform: scale(1) rotate(-4deg); opacity: 1 } 70% { opacity: 1 } 100% { transform: translateY(-60px) rotate(-4deg); opacity: 0 } }
-.servehint { position: absolute; bottom: 92px; left: 0; right: 0; text-align: center; font-weight: 900; font-size: 18px; text-shadow: 0 2px 8px #000; transition: opacity .3s; }
-.meters { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); display: flex; gap: 14px; }
-.meter { position: relative; width: 170px; height: 22px; border-radius: 11px; background: var(--panel); border: 1px solid var(--line); overflow: hidden; }
-.meter i { position: absolute; inset: 0 auto 0 0; width: 0; background: linear-gradient(90deg, #ffb13d, #ffd23d); }
-.meter i.full { background: linear-gradient(90deg, #ff3d8d, #ff8a3d); box-shadow: 0 0 16px #ff3d8d; }
-.meter.dash i { background: #3dd6ff88; }
-.meter.dash i.full { background: linear-gradient(90deg, #3dd6ff, #8affef); box-shadow: none; }
-.meter span { position: relative; display: block; text-align: center; font-size: 12px; font-weight: 900; line-height: 22px; letter-spacing: .08em; text-shadow: 0 1px 2px #000; }
-.keys { position: absolute; bottom: 12px; left: 0; right: 0; text-align: center; font-size: 12px; color: var(--dim); text-shadow: 0 1px 3px #000; }
+/* ---------- logo ---------- */
+.logo { font-family: "Lilita One", sans-serif; line-height: .86; text-align: center; transform: rotate(-4deg); font-size: clamp(56px, 9vw, 110px); }
+.logo span { display: block; color: #fff4dc; -webkit-text-stroke: .16em var(--ink); paint-order: stroke fill; filter: drop-shadow(0 6px 0 var(--ink)); }
+.logo span:last-child { color: var(--teal); margin-left: .6em; }
+.logo.big { text-align: left; font-size: clamp(64px, 10vw, 132px); }
 
-/* ---------- panels & screens ---------- */
-.screen { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; }
-.screen.dim { background: radial-gradient(ellipse at center, #0d0b18aa, #0d0b18ee); }
-.card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 22px; backdrop-filter: blur(8px); box-shadow: 0 20px 60px #0009; max-width: 100%; }
-.btn { border: 0; border-radius: 12px; padding: 12px 20px; font-weight: 900; font-size: 16px; color: #fff; background: #ffffff14; border: 1px solid var(--line); transition: transform .08s, background .15s; }
-.btn:hover { background: #ffffff24; transform: translateY(-1px); }
-.btn:active { transform: translateY(1px); }
-.btn.hot { background: linear-gradient(180deg, #ff5c9a, #e0266d); border-color: #ff8fbb; box-shadow: 0 4px 0 #8f1543, 0 0 24px #ff4d8d55; }
-.btn.cool { background: linear-gradient(180deg, #4fdcff, #1a8fe0); border-color: #9feaff; box-shadow: 0 4px 0 #0d4f8f; }
-.btn.gold { background: linear-gradient(180deg, #ffd85c, #e09a1a); border-color: #ffe9a3; color: #3a2400; box-shadow: 0 4px 0 #8f5a0d; }
-.btn:disabled { opacity: .45; cursor: default; transform: none; }
+/* ---------- title screen ---------- */
+.title { position: absolute; left: clamp(16px, 4vw, 64px); top: clamp(40px, 7vh, 90px); display: flex; flex-direction: column; gap: clamp(16px, 4vh, 40px); pointer-events: none; }
+.title > * { pointer-events: auto; }
+.tbtns { display: flex; flex-direction: column; gap: 16px; align-items: flex-start; }
+.tbtn, .sbtn { position: relative; border: 0; padding: 0; background: none; transform: skewX(-9deg); transition: transform .12s, opacity .25s; color: #fff; }
+.tbtn .tin, .sbtn .tin { display: flex; align-items: center; gap: .45em; transform: skewX(9deg); font-family: "Lilita One"; -webkit-text-stroke: .09em var(--ink); paint-order: stroke fill; }
+.tbtn { font-size: clamp(30px, 3.6vw, 48px); padding: .22em .9em .26em .7em; border-radius: 14px; border: 4px solid var(--ink); box-shadow: 0 7px 0 var(--ink), inset 0 -8px 0 #0002, inset 0 6px 0 #ffffff55; }
+.tbtn.go { background: linear-gradient(180deg, #a6e98a, #5eb957); min-width: 8.4em; }
+.tbtn.friends { background: linear-gradient(180deg, #c6aef8, #8a63e0); font-size: clamp(24px, 2.8vw, 38px); }
+.tbtn:hover, .sbtn:hover { transform: skewX(-9deg) translateY(-3px) scale(1.03); }
+.tbtn:active, .sbtn:active { transform: skewX(-9deg) translateY(4px); box-shadow: 0 2px 0 var(--ink), inset 0 -6px 0 #0002; }
+.tbtn .ico { filter: drop-shadow(2px 2px 0 var(--ink)); }
+.howto { display: inline-flex; align-items: center; gap: 8px; background: none; border: 0; color: #fff; font: 800 20px Nunito; margin-left: 2.4em; text-shadow: 0 2px 0 var(--ink), 0 0 8px #0006; }
+.howto .ico { font-size: 26px; }
+.bottombar { position: absolute; left: clamp(12px, 3vw, 48px); bottom: 22px; display: flex; gap: 14px; flex-wrap: wrap; }
+.sbtn { font-size: clamp(20px, 2vw, 28px); padding: .25em .8em; border-radius: 12px; border: 3px solid var(--ink); box-shadow: 0 5px 0 var(--ink), inset 0 -6px 0 #0002, inset 0 5px 0 #ffffff55; }
+.sbtn.shop { background: linear-gradient(180deg, #8ff0de, #3fbfaa); }
+.sbtn.summon { background: linear-gradient(180deg, #ffe08a, #f0a93a); }
+.sbtn.loadout { background: linear-gradient(180deg, #ffb0a4, #e86b62); }
+.title, .bottombar, .topbar { transition: opacity .25s, transform .25s; }
+#ui.panel-open .title, #ui.panel-open .bottombar, #ui.cine .title, #ui.cine .bottombar { opacity: 0; pointer-events: none; transform: translateX(-30px); }
+#ui.cine .topbar { opacity: 0; pointer-events: none; }
+
+/* ---------- top bar ---------- */
+.topbar { position: absolute; top: 14px; right: 14px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; pointer-events: none; }
+.topbar > * { pointer-events: auto; }
+.wallet { display: flex; gap: 8px; }
+.cur { background: var(--panel); border: 2px solid var(--ink); border-radius: 99px; padding: 7px 14px; font-weight: 900; font-size: 15px; box-shadow: 0 3px 0 var(--ink); }
+.cur.yen { color: var(--sun); } .cur.spin { color: var(--teal); } .cur.lucky { color: #ffa6e0; }
+.cur b { color: #fff; }
+.me { display: flex; align-items: center; gap: 10px; background: var(--panel); border: 2px solid var(--ink); border-radius: 14px; padding: 6px 14px 6px 8px; box-shadow: 0 3px 0 var(--ink); }
+.me .name { background: transparent; border: 0; color: #fff; font: 900 17px Nunito; width: 160px; padding: 2px 4px; border-radius: 6px; }
+.me .name:hover, .me .name:focus { background: #ffffff14; outline: none; }
+.me .eqr { font-size: 12px; color: var(--dim); font-weight: 800; padding-left: 4px; }
+
+/* ---------- panels: ink card with a gold filigree frame ---------- */
+.card { position: relative; background: var(--panel); border: 3px solid var(--ink); border-radius: 18px; padding: 22px; box-shadow: 0 8px 0 var(--ink), 0 24px 60px #2b203366; max-width: 100%; backdrop-filter: blur(6px); }
+.card::before { content: ""; position: absolute; inset: 6px; border: 1px solid var(--line); border-radius: 13px; pointer-events: none; }
+.card::after { content: ""; position: absolute; top: -10px; left: 50%; width: 14px; height: 14px; margin-left: -7px; background: var(--gold); border: 3px solid var(--ink); transform: rotate(45deg); }
+.drawer { position: absolute; top: 16px; left: 16px; bottom: 16px; width: min(560px, calc(100vw - 32px)); display: flex; }
+.drawer.panel-howto, .drawer.panel-shop, .drawer.panel-friends, .drawer.panel-play { bottom: auto; max-height: calc(100vh - 32px); }
+.panel { flex: 1; display: flex; flex-direction: column; min-height: 0; padding: 18px 20px; animation: slidein .25s cubic-bezier(.2, 1.2, .4, 1); }
+@keyframes slidein { from { transform: translateX(-40px); opacity: 0 } }
+.phead { display: flex; justify-content: space-between; align-items: center; }
+h2 { font-family: "Lilita One"; margin: 0 0 12px; font-weight: 400; color: var(--paper); letter-spacing: .02em; }
+.phead h2 { margin: 0; font-size: 30px; text-shadow: 0 3px 0 var(--ink); }
+.phead h2::before { content: "❖ "; color: var(--gold); font-size: .7em; vertical-align: .12em; }
+.x { background: #ffffff10; border: 2px solid var(--line); color: var(--paper); width: 36px; height: 36px; border-radius: 10px; font-size: 16px; }
+.x:hover { background: #ffffff22; }
+.pbody { overflow: auto; margin-top: 14px; padding-right: 4px; }
+.muted { color: var(--dim); }
+.lbl { font-weight: 900; font-size: 12px; letter-spacing: .14em; color: var(--gold); text-transform: uppercase; }
+.lbl::after { content: ""; display: inline-block; width: 40px; height: 1px; background: var(--line); vertical-align: middle; margin-left: 8px; }
+
+/* ---------- buttons ---------- */
+.btn { border-radius: 12px; padding: 11px 20px; font-family: "Lilita One"; font-size: 18px; letter-spacing: .02em; color: #fff; background: #ffffff14; border: 3px solid var(--ink);
+  box-shadow: 0 4px 0 var(--ink); transition: transform .08s, filter .15s; -webkit-text-stroke: .06em var(--ink); paint-order: stroke fill; }
+.btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+.btn.hot { background: linear-gradient(180deg, #a6e98a, #5eb957); }
+.btn.cool { background: linear-gradient(180deg, #8ff0de, #3fbfaa); }
+.btn.gold { background: linear-gradient(180deg, #ffe08a, #f0a93a); }
+.btn:disabled { opacity: .45; cursor: default; transform: none; filter: grayscale(.5); }
+.btn small { display: block; font: 800 11px Nunito; opacity: .9; -webkit-text-stroke: 0; }
 .row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .col { display: flex; flex-direction: column; gap: 10px; }
-h2 { font-family: "Russo One"; margin: 0 0 12px; font-weight: 400; }
-.muted { color: var(--dim); }
-.end .big { font-family: "Russo One"; font-size: 64px; font-style: italic; text-align: center; }
-.end .final { font-family: "Russo One"; font-size: 36px; text-align: center; margin: 4px 0 14px; }
-.chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin: 8px 0 16px; }
-.chip { padding: 6px 12px; border-radius: 99px; background: #ffffff12; font-weight: 800; font-size: 14px; }
-.seg { display: inline-flex; background: #0006; border-radius: 12px; padding: 4px; gap: 4px; }
-.seg button { border: 0; background: transparent; color: var(--dim); font-weight: 900; padding: 8px 14px; border-radius: 9px; }
-.seg button.on { background: #ffffff20; color: #fff; }
-
-/* ---------- lobby ---------- */
-.topbar { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; pointer-events: none; }
-.topbar > * { pointer-events: auto; }
-.topbar .me { display: flex; align-items: center; gap: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 6px 14px 6px 8px; }
-.topbar .name { background: transparent; border: 0; color: #fff; font: 900 18px Nunito; width: 170px; padding: 2px 4px; border-radius: 6px; }
-.topbar .name:hover, .topbar .name:focus { background: #ffffff14; outline: none; }
-.topbar .eqr { font-size: 12px; color: var(--dim); font-weight: 800; padding-left: 4px; }
-.wallet { display: flex; gap: 8px; }
-.cur { background: var(--panel); border: 1px solid var(--line); border-radius: 99px; padding: 8px 14px; font-weight: 900; }
-.cur.yen { color: #ffd23d; } .cur.spin { color: #4fdcff; } .cur.lucky { color: #ff8ae0; }
-.cur b { color: #fff; }
-.nav { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 10px; }
-.nav .btn { text-align: left; min-width: 210px; font-size: 17px; }
-.spotprompt { position: absolute; bottom: 70px; left: 50%; transform: translate(-50%, 10px); opacity: 0; transition: .2s; background: var(--panel); border: 1px solid var(--line); padding: 10px 18px; border-radius: 12px; font-weight: 900; pointer-events: none; }
-.spotprompt.show { opacity: 1; transform: translate(-50%, 0); }
-.lobbykeys { position: absolute; bottom: 12px; left: 0; right: 0; text-align: center; font-size: 12px; color: var(--dim); pointer-events: none; }
-.drawer { position: absolute; top: 76px; right: 16px; bottom: 16px; width: min(560px, calc(100vw - 32px)); display: flex; }
-.panel { flex: 1; display: flex; flex-direction: column; min-height: 0; padding: 18px; animation: slidein .25s cubic-bezier(.2, 1.2, .4, 1); }
-@keyframes slidein { from { transform: translateX(40px); opacity: 0 } }
-.phead { display: flex; justify-content: space-between; align-items: center; }
-.phead h2 { margin: 0; font-size: 24px; }
-.x { background: #ffffff12; border: 0; color: #fff; width: 34px; height: 34px; border-radius: 10px; font-size: 16px; }
-.pbody { overflow: auto; margin-top: 12px; padding-right: 4px; }
-.lbl { font-weight: 900; font-size: 12px; letter-spacing: .1em; color: var(--dim); text-transform: uppercase; }
+.seg { display: inline-flex; background: #0004; border: 2px solid var(--ink); border-radius: 12px; padding: 4px; gap: 4px; }
+.seg button { border: 0; background: transparent; color: var(--dim); font-family: "Lilita One"; font-size: 17px; padding: 7px 14px; border-radius: 8px; }
+.seg button.on { background: var(--gold); color: var(--ink); }
 .tabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
-.tabs button { border: 1px solid var(--line); background: transparent; color: var(--dim); font-weight: 900; padding: 8px 14px; border-radius: 10px; }
-.tabs button.on { background: #ffffff1c; color: #fff; }
-.btn small { display: block; font-size: 11px; opacity: .8; font-weight: 800; }
-.rbadge { display: inline-block; font-size: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; color: var(--rc); border: 1px solid var(--rc); border-radius: 6px; padding: 1px 6px; background: color-mix(in srgb, var(--rc) 14%, transparent); }
+.tabs button { border: 2px solid var(--line); background: transparent; color: var(--dim); font-family: "Lilita One"; font-size: 16px; padding: 7px 14px; border-radius: 10px; }
+.tabs button.on { background: var(--gold); color: var(--ink); border-color: var(--ink); }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin: 8px 0 16px; }
+.chip { padding: 6px 12px; border-radius: 99px; background: #ffffff14; border: 1px solid var(--line); font-weight: 800; font-size: 14px; }
+.chip.yen { color: var(--sun); font-size: 18px; font-family: "Lilita One"; }
+.notes { margin: 0; padding-left: 18px; font-size: 15px; line-height: 1.55; }
+.notes li::marker { color: var(--gold); }
+.howrow { display: flex; gap: 12px; align-items: center; font-weight: 700; }
+.keycap { min-width: 104px; text-align: center; font-family: "Lilita One"; font-size: 14px; padding: 5px 8px; border-radius: 8px; background: var(--paper); color: var(--ink); border: 2px solid var(--ink); box-shadow: 0 3px 0 var(--ink); }
+
+/* ---------- rackets / loadout / summon ---------- */
+.rbadge { display: inline-block; font-size: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; color: var(--rc); border: 1px solid var(--rc); border-radius: 6px; padding: 1px 6px; background: color-mix(in srgb, var(--rc) 16%, transparent); }
 .rgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
-.rcard { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 6px 8px; border-radius: 12px; border: 1px solid var(--line); border-bottom: 3px solid var(--rc); color: #fff;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--rc) 18%, transparent), #0003); }
-.rcard.locked { filter: grayscale(1) brightness(.5); cursor: default; }
-.rcard.sel { outline: 2px solid #fff; }
-.rcard.eq::after { content: "E"; position: absolute; top: 4px; left: 6px; font-size: 10px; font-weight: 900; background: #ff4d8d; border-radius: 4px; padding: 0 4px; }
+.rcard { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 6px 8px; border-radius: 12px; border: 2px solid var(--ink); border-bottom: 4px solid var(--rc); color: #fff;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--rc) 22%, transparent), #0003); }
+.rcard.locked { filter: grayscale(1) brightness(.55); cursor: default; }
+.rcard.sel { outline: 2px solid var(--gold); outline-offset: 1px; }
+.rcard.eq::after { content: "E"; position: absolute; top: 4px; left: 6px; font-size: 10px; font-weight: 900; background: var(--coral); color: var(--ink); border-radius: 4px; padding: 0 4px; }
 .rcard .rn { font-size: 11px; font-weight: 800; text-align: center; line-height: 1.1; }
 .rcard .cnt { position: absolute; top: 4px; right: 6px; font-size: 11px; font-weight: 900; color: var(--dim); }
-.rcard .new { position: absolute; top: 4px; right: 6px; font-size: 10px; font-weight: 900; color: #3d2a00; background: var(--gold); padding: 0 4px; border-radius: 4px; }
+.rcard .new { position: absolute; top: 4px; right: 6px; font-size: 10px; font-weight: 900; color: var(--ink); background: var(--sun); padding: 0 4px; border-radius: 4px; }
 .ricon.locked svg { opacity: .35; }
-.detail { background: #0004; border-radius: 14px; padding: 14px; margin-bottom: 14px; }
+.detail { background: #0003; border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 14px; }
 .dhead { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-.dname { font-family: "Russo One"; font-size: 22px; }
+.dname { font-family: "Lilita One"; font-size: 26px; }
 .stats { display: grid; gap: 6px; }
 .stat { display: grid; grid-template-columns: 84px 1fr 26px 30px; align-items: center; gap: 8px; font-weight: 800; font-size: 13px; }
-.stat .sb { height: 9px; background: #ffffff14; border-radius: 9px; overflow: hidden; }
-.stat .sb i { display: block; height: 100%; background: linear-gradient(90deg, var(--cool), #8affef); border-radius: 9px; }
+.stat .sb { height: 10px; background: #ffffff14; border-radius: 9px; overflow: hidden; border: 1px solid #0004; }
+.stat .sb i { display: block; height: 100%; background: linear-gradient(90deg, var(--teal), #d6fff6); border-radius: 9px; }
 .stat b { text-align: right; }
-.sd.up { color: #6dff9e; } .sd.down { color: #ff6d8a; }
+.sd.up { color: #8ff0a0; } .sd.down { color: #ff9aa6; }
 .rates { width: 100%; border-collapse: collapse; margin-top: 8px; font-weight: 800; font-size: 13px; }
 .rates td, .rates th { padding: 4px 8px; text-align: left; border-bottom: 1px solid var(--line); }
 details summary { cursor: pointer; margin-top: 10px; font-weight: 800; color: var(--dim); }
 .reveal { position: absolute; inset: 0; display: grid; place-items: end center; padding: 24px; }
-.revealcard { width: min(420px, 100%); background: var(--panel); border: 2px solid var(--rc); box-shadow: 0 0 40px color-mix(in srgb, var(--rc) 50%, transparent); border-radius: 18px; padding: 18px; text-align: center; animation: slidein .3s; }
-.revealcard .dname { color: var(--rc); font-size: 30px; margin: 6px 0 2px; text-shadow: 0 0 20px var(--rc); }
+.revealcard { width: min(420px, 100%); background: var(--panel); border: 3px solid var(--ink); outline: 2px solid var(--rc); outline-offset: -8px; box-shadow: 0 8px 0 var(--ink), 0 0 50px color-mix(in srgb, var(--rc) 55%, transparent); border-radius: 18px; padding: 20px; text-align: center; animation: slidein .3s; }
+.revealcard .dname { color: var(--rc); font-size: 34px; margin: 6px 0 2px; -webkit-text-stroke: .08em var(--ink); paint-order: stroke fill; }
 .revealcard .stats { text-align: left; margin-top: 12px; }
-.new.big { color: var(--gold); font-family: "Russo One"; font-size: 20px; }
+.new.big { color: var(--sun); font-family: "Lilita One"; font-size: 22px; }
 .reveal .card .rgrid { grid-template-columns: repeat(5, 1fr); }
-@media (max-width: 720px) {
-  .nav { top: auto; bottom: 40px; transform: none; left: 16px; right: 16px; flex-direction: row; flex-wrap: wrap; justify-content: center; }
-  .nav .btn { min-width: 0; font-size: 13px; padding: 10px 12px; }
-  .drawer { top: 120px; }
-  .reveal .card .rgrid { grid-template-columns: repeat(3, 1fr); }
-}
-#ui.cine .nav, #ui.cine .lobbykeys, #ui.cine .spotprompt { display: none; }
 @media (min-width: 801px) { .reveal { place-items: center end; padding-right: 6vw; } }
-.codein { width: 110px; background: #0006; border: 1px solid var(--line); color: #fff; font: 900 18px "Russo One"; letter-spacing: .15em; text-transform: uppercase; padding: 10px 12px; border-radius: 12px; }
-.roomcode { font-family: "Russo One"; font-size: 18px; color: var(--dim); }
-.roomcode b { color: #fff; font-size: 30px; letter-spacing: .15em; margin-left: 6px; }
-.member { display: flex; align-items: center; gap: 8px; font-weight: 800; }
-.dot { width: 10px; height: 10px; border-radius: 50%; } .dot.t0 { background: var(--t0); } .dot.t1 { background: var(--t1); }
-.searching::before { content: ""; display: inline-block; width: 12px; height: 12px; margin-right: 8px; border-radius: 50%; border: 2px solid var(--cool); border-top-color: transparent; animation: spin .8s linear infinite; vertical-align: -1px; }
-@keyframes spin { to { transform: rotate(360deg) } }
-.cur.rank b { margin-left: 4px; }
-.toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 40; background: var(--panel); border: 1px solid var(--gold); color: #fff; font-weight: 800; padding: 12px 18px; border-radius: 12px; max-width: min(560px, calc(100vw - 32px)); box-shadow: 0 10px 40px #0008; transition: opacity .4s; }
-.toast.out { opacity: 0; }
+#ui.cine .drawer { display: none; }
+
+/* ---------- shop / friends ---------- */
 .shopgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
 .shopitem { text-align: left; padding: 14px; }
-.shopitem .price { margin-top: 8px; font-size: 18px; }
-.codein.wide { width: 220px; }
-.chip.yen { color: var(--gold); }
-.rankcard { border-radius: 14px; padding: 14px 16px; background: linear-gradient(90deg, color-mix(in srgb, var(--rc) 28%, transparent), #0004); border-left: 5px solid var(--rc); font-weight: 800; }
-.rankcard .rk { font-family: "Russo One"; font-size: 26px; color: var(--rc); }
-.rankladder { display: flex; gap: 6px; flex-wrap: wrap; }
-.rankladder span { font-size: 12px; font-weight: 900; padding: 4px 8px; border-radius: 8px; color: var(--rc); border: 1px solid #ffffff1a; opacity: .55; }
-.rankladder span.on { opacity: 1; border-color: var(--rc); }
-.rankladder small { margin-left: 4px; color: var(--dim); font-weight: 800; }
-.league tr.you td { color: var(--gold); font-weight: 900; }
-.league tr.up td:first-child { color: #7dffb0; } .league tr.down td:first-child { color: #ff8aa5; }
-.notes { margin: 0; padding-left: 18px; color: var(--ink); font-size: 14px; line-height: 1.5; }
-.member .ricon svg { width: 22px; height: 30px; }
+.shopitem .price { margin-top: 8px; font-size: 20px; }
+.codein { width: 120px; background: #0005; border: 2px solid var(--ink); color: #fff; font: 22px "Lilita One"; letter-spacing: .15em; text-transform: uppercase; padding: 8px 12px; border-radius: 12px; }
+.roomcode { font-family: "Lilita One"; font-size: 18px; color: var(--dim); }
+.roomcode b { color: var(--sun); font-size: 34px; letter-spacing: .15em; margin-left: 6px; -webkit-text-stroke: .06em var(--ink); paint-order: stroke fill; }
+.member { display: flex; align-items: center; gap: 8px; font-weight: 800; }
+.dot { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--ink); } .dot.t0 { background: var(--t0); } .dot.t1 { background: var(--t1); }
+.toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 40; background: var(--panel); border: 3px solid var(--ink); color: #fff; font-weight: 800; padding: 12px 18px; border-radius: 12px; box-shadow: 0 5px 0 var(--ink); transition: opacity .4s; }
+.toast.out { opacity: 0; }
+
+/* ---------- match HUD ---------- */
+.hud { position: absolute; inset: 0; }
+.scorebar { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); display: flex; align-items: stretch; filter: drop-shadow(0 5px 0 var(--ink)); }
+.scorebar .team { display: flex; align-items: center; gap: 12px; padding: 4px 16px; background: var(--panel); border: 3px solid var(--ink); }
+.scorebar .t0 { border-radius: 16px 0 0 16px; border-left: 8px solid var(--t0); }
+.scorebar .t1 { border-radius: 0 16px 16px 0; border-right: 8px solid var(--t1); }
+.hud.flip .t0 { border-left-color: var(--t1); } .hud.flip .t1 { border-right-color: var(--t0); }
+.scorebar b { font-family: "Lilita One"; font-weight: 400; font-size: 40px; min-width: 38px; text-align: center; -webkit-text-stroke: .07em var(--ink); paint-order: stroke fill; }
+.scorebar .tname { font-weight: 900; font-size: 14px; color: var(--dim); max-width: 140px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.scorebar .serving .tname::after { content: " ✦"; color: var(--sun); }
+.scorebar .vs { display: grid; place-items: center; padding: 0 10px; background: var(--ink); color: var(--gold); font-family: "Lilita One"; font-size: 14px; }
+.banner { position: absolute; top: 24%; left: 0; right: 0; text-align: center; opacity: 0; transform: scale(.8) rotate(-3deg); transition: opacity .2s, transform .25s cubic-bezier(.2, 1.6, .4, 1); }
+.banner.show { opacity: 1; transform: scale(1) rotate(-3deg); }
+.banner .big { font-family: "Lilita One"; font-size: clamp(48px, 9vw, 104px); -webkit-text-stroke: .1em var(--ink); paint-order: stroke fill; filter: drop-shadow(0 6px 0 var(--ink)); }
+.banner .sub { font-weight: 900; font-size: 20px; color: #fff; text-shadow: 0 2px 0 var(--ink), 0 0 10px #0008; }
+.pops { position: absolute; top: 40%; left: 0; right: 0; text-align: center; }
+.pop { font-family: "Lilita One"; font-size: 64px; animation: pop 1.1s ease-out forwards; position: absolute; left: 0; right: 0; -webkit-text-stroke: .1em var(--ink); paint-order: stroke fill; }
+.pop.small { font-size: 30px; }
+@keyframes pop { 0% { transform: scale(2.2) rotate(-8deg); opacity: 0 } 12% { transform: scale(1) rotate(-5deg); opacity: 1 } 70% { opacity: 1 } 100% { transform: translateY(-60px) rotate(-5deg); opacity: 0 } }
+.servehint { position: absolute; bottom: 96px; left: 0; right: 0; text-align: center; font-weight: 900; font-size: 19px; color: #fff; text-shadow: 0 2px 0 var(--ink), 0 0 10px #0008; transition: opacity .3s; }
+.meters { position: absolute; bottom: 42px; left: 50%; transform: translateX(-50%); display: flex; gap: 14px; }
+.meter { position: relative; width: 180px; height: 26px; border-radius: 13px; background: var(--panel); border: 3px solid var(--ink); overflow: hidden; box-shadow: 0 3px 0 var(--ink); }
+.meter i { position: absolute; inset: 0 auto 0 0; width: 0; background: linear-gradient(90deg, var(--sun), #ffe9a8); }
+.meter i.full { background: linear-gradient(90deg, var(--coral), var(--sun)); box-shadow: 0 0 16px var(--coral); }
+.meter.dash i { background: #5fd6c488; }
+.meter.dash i.full { background: linear-gradient(90deg, var(--teal), #d6fff6); }
+.meter span { position: relative; display: block; text-align: center; font-family: "Lilita One"; font-size: 14px; line-height: 20px; letter-spacing: .06em; color: #fff; -webkit-text-stroke: .08em var(--ink); paint-order: stroke fill; }
+.keys { position: absolute; bottom: 12px; left: 0; right: 0; text-align: center; font-size: 12px; font-weight: 800; color: #fff; text-shadow: 0 1px 0 var(--ink), 0 0 6px #0008; }
+
+/* ---------- end screen ---------- */
+.screen { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; }
+.screen.dim { background: radial-gradient(ellipse at center, #2b203355, #2b2033bb); }
+.end .big { font-family: "Lilita One"; font-size: 72px; text-align: center; -webkit-text-stroke: .1em var(--ink); paint-order: stroke fill; transform: rotate(-3deg); color: #fff; }
+.end .big.win { color: var(--sage); } .end .big.lose { color: var(--coral); }
+.end .final { font-family: "Lilita One"; font-size: 40px; text-align: center; margin: 4px 0 14px; color: var(--paper); }
+
+@media (max-width: 720px) {
+  .title { top: 130px; } .howto { margin-left: .5em; }
+  .topbar { left: 14px; align-items: stretch; }
+  .reveal .card .rgrid { grid-template-columns: repeat(3, 1fr); }
+}

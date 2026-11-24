@@ -194,164 +194,325 @@ def build_shuttle():
     finish("shuttle", s)
 
 
-# ---------------------------------------------------------------- avatar
+
+# ================================================================ v2 art style
+# Painterly/cel look: flat colors, chunky faceted shapes (the game toon-shades + outlines them).
+import bmesh, random
+
+
+def ico(r, loc, m, sub=1, scale=(1, 1, 1), name="ico"):
+    bpy.ops.mesh.primitive_ico_sphere_add(radius=r, subdivisions=sub, location=loc)
+    o = bpy.context.object; o.name = name; o.scale = scale
+    bpy.ops.object.transform_apply(scale=True); assign(o, m)
+    return o
+
+
+def cone(r1, r2, depth, loc, m, verts=8, rot=(0, 0, 0), name="cone"):
+    bpy.ops.mesh.primitive_cone_add(vertices=verts, radius1=r1, radius2=r2, depth=depth, location=loc, rotation=rot)
+    o = bpy.context.object; o.name = name; assign(o, m)
+    return o
+
+
+def jitter(obj, amt, seed=1, zmin=-1e9):
+    """push vertices around a little for a hand-made look"""
+    rnd = random.Random(seed)
+    for v in obj.data.vertices:
+        if v.co.z >= zmin:
+            v.co.x += rnd.uniform(-amt, amt); v.co.y += rnd.uniform(-amt, amt); v.co.z += rnd.uniform(-amt, amt) * 0.6
+
+
+# ---------------------------------------------------------------- avatar: hooded, cloaked little hero
 def build_avatar():
     s = new_scene("avatar")
-    team = mat("Team", (0.2, 0.5, 1.0), rough=0.6)
-    skin = mat("Skin", (1.0, 0.8, 0.62), rough=0.6)
-    dark = mat("Dark", (0.05, 0.05, 0.07), rough=0.4)
-    white = mat("White", (0.97, 0.97, 0.97), rough=0.5)
-    shoe = mat("Shoe", (0.95, 0.95, 0.98), rough=0.4)
+    team = mat("Team", (0.2, 0.5, 1.0), rough=0.7)
+    cloak = mat("Cloak", (0.94, 0.9, 0.8), rough=0.8)
+    skin = mat("Skin", (1.0, 0.86, 0.74), rough=0.7)
+    hair = mat("Hair", (0.2, 0.15, 0.24), rough=0.6)
+    dark = mat("Dark", (0.1, 0.09, 0.13), rough=0.6)
+    white = mat("EyeShine", (1, 1, 1), emit=1.0)
+    boot = mat("Boot", (0.36, 0.25, 0.2), rough=0.7)
+    gold = mat("Gold", (0.95, 0.74, 0.36), metal=0.6, rough=0.3)
 
-    bpy.ops.mesh.primitive_uv_sphere_add(radius=1, segments=20, ring_count=12, location=(0, 0, 0.82))
-    body = bpy.context.object; body.name = "Body"; body.scale = (0.3, 0.24, 0.42)
-    bpy.ops.object.transform_apply(scale=True); assign(body, team); shade_smooth(body)
-    # shorts
-    bpy.ops.mesh.primitive_uv_sphere_add(radius=1, segments=20, ring_count=10, location=(0, 0, 0.58))
-    sh = bpy.context.object; sh.name = "Shorts"; sh.scale = (0.29, 0.23, 0.18)
-    bpy.ops.object.transform_apply(scale=True); assign(sh, dark); shade_smooth(sh)
-
-    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.23, segments=20, ring_count=12, location=(0, 0, 1.42))
-    head = bpy.context.object; head.name = "Head"; assign(head, skin); shade_smooth(head)
-    bpy.ops.mesh.primitive_torus_add(major_radius=0.225, minor_radius=0.03, major_segments=24, minor_segments=6,
-                                     location=(0, 0, 1.52))
-    hb = bpy.context.object; hb.name = "Headband"; assign(hb, team); shade_smooth(hb)
+    # cloak body: a flared cone, with a team-colored hem and a gold clasp
+    b = cone(0.4, 0.16, 0.72, (0, 0, 0.76), cloak, verts=14, name="Body"); shade_smooth(b)
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.385, minor_radius=0.035, major_segments=24, minor_segments=6, location=(0, 0, 0.42))
+    assign(bpy.context.object, team); bpy.context.object.name = "Hem"
+    ico(0.045, (0, -0.2, 1.02), gold, 1, name="Clasp")
+    # scarf around the neck + a tail that streams behind
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.17, minor_radius=0.065, major_segments=20, minor_segments=8, location=(0, 0, 1.1))
+    sc = bpy.context.object; sc.name = "Scarf"; assign(sc, team); shade_smooth(sc)
+    box((0.14, 0.05, 0.5), (0.06, 0.2, 0.86), team, "ScarfTail", rot=(0.5, 0.15, 0))
+    # head
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.27, segments=24, ring_count=14, location=(0, 0, 1.38))
+    hd = bpy.context.object; hd.name = "Head"; hd.scale = (1, 0.95, 0.92); bpy.ops.object.transform_apply(scale=True)
+    assign(hd, skin); shade_smooth(hd)
+    # hair: a cap that leaves the face open, plus a fringe and a couple of tufts
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.29, segments=24, ring_count=14, location=(0, 0.02, 1.42))
+    hr = bpy.context.object; hr.name = "Hair"; assign(hr, hair)
+    bm = bmesh.new(); bm.from_mesh(hr.data)
+    kill = [v for v in bm.verts if (v.co.y < -0.05 and v.co.z < 0.02) or v.co.z < -0.2]
+    bmesh.ops.delete(bm, geom=kill, context="VERTS"); bm.to_mesh(hr.data); bm.free(); shade_smooth(hr)
+    for x, rz in ((-0.12, 0.35), (-0.03, 0.05), (0.07, -0.25), (0.15, -0.5)):
+        cone(0.075, 0, 0.2, (x, -0.21, 1.46), hair, verts=5, rot=(math.pi * 0.92, 0, rz), name="Fringe")
+    cone(0.05, 0, 0.22, (0.04, 0.0, 1.72), hair, verts=5, rot=(-0.4, 0.3, 0), name="Tuft")
+    cone(0.04, 0, 0.16, (-0.05, 0.03, 1.7), hair, verts=5, rot=(-0.2, -0.5, 0), name="Tuft")
+    # hood draped behind the head
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.3, segments=20, ring_count=12, location=(0, 0.08, 1.24))
+    hood = bpy.context.object; hood.name = "Hood"; assign(hood, cloak)
+    bm = bmesh.new(); bm.from_mesh(hood.data)
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if v.co.y < 0.06 or v.co.z > -0.02], context="VERTS"); bm.to_mesh(hood.data); bm.free()
+    shade_smooth(hood)
+    # big anime eyes with a shine
     for sx in (-1, 1):
-        bpy.ops.mesh.primitive_uv_sphere_add(radius=0.035, segments=10, ring_count=6,
-                                             location=(sx * 0.08, -0.2, 1.45))
-        e = bpy.context.object; e.name = "Eye"; e.scale = (1, 0.6, 1.3); assign(e, dark)
-    # legs + shoes
+        ico(0.045, (sx * 0.095, -0.235, 1.37), dark, 2, scale=(0.8, 0.5, 1.35), name="Eye")
+        ico(0.014, (sx * 0.095 - 0.012, -0.258, 1.4), white, 1, name="Shine")
+    # short legs + boots
     for sx, nm in ((-1, "R"), (1, "L")):
-        cyl(0.07, 0.36, (sx * 0.13, 0, 0.3), verts=10, m=skin, name="Leg" + nm)
-        bpy.ops.mesh.primitive_uv_sphere_add(radius=1, segments=12, ring_count=8, location=(sx * 0.13, -0.04, 0.07))
-        f = bpy.context.object; f.name = "Foot" + nm; f.scale = (0.09, 0.15, 0.07)
-        bpy.ops.object.transform_apply(scale=True); assign(f, shoe); shade_smooth(f)
-    # arms: object origin at the shoulder so the game can rotate them; hand empty at the tip
+        cyl(0.065, 0.36, (sx * 0.12, 0, 0.3), verts=10, m=dark, name="Leg" + nm)
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=1, segments=12, ring_count=8, location=(sx * 0.12, -0.04, 0.07))
+        f = bpy.context.object; f.name = "Foot" + nm; f.scale = (0.09, 0.15, 0.075)
+        bpy.ops.object.transform_apply(scale=True); assign(f, boot); shade_smooth(f)
+    # arms: origin at the shoulder; cloak sleeve + hand; Hand empty at the tip (racket attaches there)
     for sx, nm in ((-1, "R"), (1, "L")):
-        sxp = sx * 0.34
-        bpy.ops.mesh.primitive_uv_sphere_add(radius=1, segments=12, ring_count=8, location=(0, 0, -0.22))
-        arm = bpy.context.object; arm.scale = (0.065, 0.065, 0.25)
-        bpy.ops.object.transform_apply(scale=True)
-        bpy.ops.mesh.primitive_uv_sphere_add(radius=0.07, segments=10, ring_count=6, location=(0, 0, -0.46))
-        hand = bpy.context.object; assign(hand, skin)
-        assign(arm, team if False else skin)
-        arm = join([arm, hand], "Arm" + nm); shade_smooth(arm)
-        arm.location = (sxp, 0, 1.08)
-        bpy.ops.object.empty_add(type="PLAIN_AXES", location=(sxp, 0, 1.08 - 0.47))
+        sxp = sx * 0.22
+        bpy.ops.mesh.primitive_cone_add(vertices=10, radius1=0.085, radius2=0.06, depth=0.34, location=(0, 0, -0.18))
+        sl = bpy.context.object; assign(sl, cloak)
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=0.065, segments=10, ring_count=6, location=(0, 0, -0.41))
+        hn = bpy.context.object; assign(hn, skin)
+        arm = join([sl, hn], "Arm" + nm); shade_smooth(arm)
+        arm.location = (sxp, 0, 1.03)
+        bpy.ops.object.empty_add(type="PLAIN_AXES", location=(sxp, 0, 1.03 - 0.44))
         h = bpy.context.object; h.name = "Hand" + nm
         h.parent = arm; h.matrix_parent_inverse = arm.matrix_world.inverted()
     finish("avatar", s)
 
 
-# ---------------------------------------------------------------- court (game: x = length, net at x=0; Blender y = -game z)
+# ---------------------------------------------------------------- shared environment pieces
+def env_mats():
+    return dict(
+        grass=mat("Grass", (0.46, 0.66, 0.34), rough=0.9), grass2=mat("GrassDark", (0.3, 0.5, 0.3), rough=0.9),
+        leaf=mat("Leaf", (0.36, 0.6, 0.4), rough=0.8), blossom=mat("Blossom", (0.98, 0.72, 0.78), rough=0.8),
+        autumn=mat("Autumn", (0.97, 0.66, 0.36), rough=0.8),
+        rock=mat("Rock", (0.6, 0.55, 0.62), rough=0.9), rockdark=mat("RockDark", (0.3, 0.26, 0.38), rough=0.9),
+        stone=mat("Stone", (0.86, 0.81, 0.72), rough=0.85), wood=mat("Wood", (0.5, 0.33, 0.22), rough=0.8),
+        gold=mat("Gold", (0.95, 0.74, 0.36), metal=0.6, rough=0.3), lantern=mat("Lantern", (1.0, 0.78, 0.45), emit=3.0),
+        cloth1=mat("ClothRed", (0.88, 0.32, 0.36), rough=0.8), cloth2=mat("ClothTeal", (0.26, 0.66, 0.68), rough=0.8),
+        cream=mat("Cream", (0.97, 0.93, 0.84), rough=0.8),
+    )
+
+
+def island(M, rx, ry, depth=12, seed=3):
+    # grass top + jagged rock underside
+    top = cyl(1, 0.6, (0, 0, -0.3), verts=40, m=M["grass"], name="IslandTop"); top.scale = (rx, ry, 1)
+    bpy.ops.object.transform_apply(scale=True); jitter(top, 0.25, seed, zmin=0.29)
+    rim = cyl(1, 1.2, (0, 0, -1.2), verts=40, m=M["rock"], name="IslandRim"); rim.scale = (rx * 0.99, ry * 0.99, 1)
+    bpy.ops.object.transform_apply(scale=True); jitter(rim, 0.5, seed + 1)
+    und = cone(1, 0.12, depth, (0, 0, -1.8 - depth / 2), M["rockdark"], verts=24, rot=(math.pi, 0, 0), name="Underside")
+    und.scale = (rx * 0.95, ry * 0.95, 1); bpy.ops.object.transform_apply(scale=True, rotation=True)
+    jitter(und, 1.6, seed + 2)
+    return top
+
+
+def tree(M, x, y, h=4.5, kind="leaf", seed=0, z=0.0):
+    rnd = random.Random(seed)
+    cyl(0.22, h, (x, y, z + h / 2), verts=7, m=M["wood"], name="Trunk")
+    for i in range(3):
+        ico(1.4 - i * 0.25 + rnd.uniform(-0.2, 0.2), (x + rnd.uniform(-0.7, 0.7), y + rnd.uniform(-0.7, 0.7), z + h + i * 0.9 - 0.3), M[kind], 1, name="Canopy")
+
+
+def pillar(M, x, y, h, broken=True, seed=0):
+    rnd = random.Random(seed)
+    cyl(0.55, 0.3, (x, y, 0.15), verts=8, m=M["stone"], name="PillarBase")
+    p = cyl(0.42, h, (x, y, 0.3 + h / 2), verts=8, m=M["stone"], name="Pillar")
+    if broken:
+        for v in p.data.vertices:
+            if v.co.z > 0: v.co.z += rnd.uniform(-0.5, 0.2)
+    else:
+        box((1.2, 1.2, 0.3), (x, y, 0.45 + h), M["stone"], "Capital")
+    return p
+
+
+def lantern_post(M, x, y):
+    cyl(0.07, 1.8, (x, y, 0.9), verts=6, m=M["wood"], name="Post")
+    box((0.32, 0.32, 0.4), (x, y, 1.95), M["lantern"], "Lantern")
+    cone(0.3, 0, 0.25, (x, y, 2.28), M["wood"], verts=4, rot=(0, 0, math.pi / 4), name="LanternRoof")
+
+
+def grass_tufts(M, n, rx, ry, keep_out, seed=7):
+    rnd = random.Random(seed); parts = []
+    for i in range(n):
+        a = rnd.uniform(0, math.tau); r = math.sqrt(rnd.uniform(0.05, 0.95))
+        x, y = math.cos(a) * r * rx, math.sin(a) * r * ry
+        if keep_out(x, y): continue
+        for k in range(3):
+            parts.append(cone(0.08, 0, rnd.uniform(0.25, 0.45), (x + rnd.uniform(-0.12, 0.12), y + rnd.uniform(-0.12, 0.12), 0.15), M["grass2"], verts=3,
+                              rot=(rnd.uniform(-0.3, 0.3), rnd.uniform(-0.3, 0.3), 0), name="tuft"))
+    if parts: join(parts, "Tufts")
+
+
+def flag(M, x, y, cloth, h=5):
+    cyl(0.08, h, (x, y, h / 2), verts=6, m=M["wood"], name="FlagPole")
+    ico(0.14, (x, y, h + 0.1), M["gold"], 1, name="Finial")
+    bpy.ops.mesh.primitive_grid_add(x_subdivisions=6, y_subdivisions=2, size=1, location=(x, y + 0.65, h - 1.3), rotation=(math.pi / 2, 0, math.pi / 2))
+    f = bpy.context.object; f.name = "Banner"; f.scale = (1.2, 2.2, 1); bpy.ops.object.transform_apply(scale=True, rotation=True)
+    for v in f.data.vertices: v.co.x += math.sin(v.co.y * 3) * 0.12
+    assign(f, cloth)
+
+
+# ---------------------------------------------------------------- court: floating ruins at golden hour
 COURT_L, COURT_W, NET_H = 18.0, 10.0, 1.55
 
 
 def build_court():
-    s = new_scene("court")
-    floor = mat("ArenaFloor", (0.11, 0.1, 0.16), rough=0.8)
-    court = mat("CourtFloor", (0.13, 0.42, 0.36), rough=0.55)
-    court2 = mat("CourtFloor2", (0.1, 0.3, 0.55), rough=0.55)
-    line = mat("Line", (1, 1, 1), emit=0.6)
-    post = mat("Post", (0.9, 0.25, 0.3), metal=0.4, rough=0.35)
-    netm = mat("Net", (0.95, 0.95, 1.0), emit=0.3)
-    wall = mat("Wall", (0.16, 0.14, 0.26), rough=0.85)
-    seat = mat("Seats", (0.55, 0.12, 0.3), rough=0.7)
-    seat2 = mat("Seats2", (0.12, 0.25, 0.6), rough=0.7)
-    lamp = mat("Lamp", (1.0, 0.97, 0.9), emit=6.0)
-    neon1 = mat("NeonA", (1.0, 0.2, 0.55), emit=5.0)
-    neon2 = mat("NeonB", (0.15, 0.8, 1.0), emit=5.0)
-
-    box((44, 30, 0.2), (0, 0, -0.1), floor, "ArenaFloor")
+    s = new_scene("court"); M = env_mats()
+    courtA = mat("CourtA", (0.86, 0.6, 0.44), rough=0.8)
+    courtB = mat("CourtB", (0.46, 0.66, 0.66), rough=0.8)
+    line = mat("Line", (0.99, 0.96, 0.88), emit=0.25)
+    netm = mat("Net", (0.97, 0.94, 0.86), rough=0.7)
+    island(M, 30, 20, depth=16)
     L, W = COURT_L, COURT_W
-    box((L / 2 + 1, W + 2, 0.02), (-(L / 2 + 1) / 2, 0, 0.01), court, "SideA")
-    box((L / 2 + 1, W + 2, 0.02), ((L / 2 + 1) / 2, 0, 0.01), court2, "SideB")
-    lw, y = 0.07, 0.025
+    box((L + 6, W + 6, 0.12), (0, 0, -0.05), M["stone"], "Plaza")
+    rnd = random.Random(11); tiles = []
+    for i in range(70):  # worn stone tiles around the plaza
+        a = rnd.uniform(0, math.tau)
+        x, y = math.cos(a) * (L / 2 + 3.6 + rnd.uniform(0, 1.6)), math.sin(a) * (W / 2 + 3.4 + rnd.uniform(0, 1.2))
+        tiles.append(box((rnd.uniform(0.6, 1.3), rnd.uniform(0.6, 1.3), 0.08), (x, y, 0.0), M["stone"], "tile", rot=(0, 0, rnd.uniform(0, 1))))
+    join(tiles, "Tiles")
+    box((L / 2 + 1, W + 2, 0.03), (-(L / 2 + 1) / 2, 0, 0.02), courtA, "SideA")
+    box((L / 2 + 1, W + 2, 0.03), ((L / 2 + 1) / 2, 0, 0.02), courtB, "SideB")
+    lw, y = 0.08, 0.04
     lines = [
         box((L, lw, 0.01), (0, W / 2, y)), box((L, lw, 0.01), (0, -W / 2, y)),
         box((lw, W, 0.01), (L / 2, 0, y)), box((lw, W, 0.01), (-L / 2, 0, y)),
-        box((lw, W, 0.01), (0, 0, y)),
         box((lw, W, 0.01), (3, 0, y)), box((lw, W, 0.01), (-3, 0, y)),
         box((L / 2 - 3, lw, 0.01), (-(L / 2 + 3) / 2, 0, y)), box((L / 2 - 3, lw, 0.01), ((L / 2 + 3) / 2, 0, y)),
     ]
     for o in lines: assign(o, line)
     join(lines, "Lines")
-    # net
-    for sy in (-1, 1):
-        cyl(0.06, NET_H + 0.05, (0, sy * (W / 2 + 0.3), (NET_H + 0.05) / 2), verts=12, m=post, name="Post")
+    for sy in (-1, 1):  # wooden net posts with gold finials
+        cyl(0.08, NET_H + 0.1, (0, sy * (W / 2 + 0.3), (NET_H + 0.1) / 2), verts=8, m=M["wood"], name="Post")
+        ico(0.13, (0, sy * (W / 2 + 0.3), NET_H + 0.18), M["gold"], 1, name="Finial")
     strands, top, bot, span = [], NET_H - 0.05, NET_H - 0.8, W + 0.6
-    for i in range(int(span / 0.12) + 1):
-        strands.append(box((0.012, 0.012, top - bot), (0, -span / 2 + i * 0.12, (top + bot) / 2), netm, "n"))
-    for j in range(8):
-        strands.append(box((0.012, span, 0.012), (0, 0, bot + j * (top - bot) / 7), netm, "n"))
+    for i in range(int(span / 0.14) + 1):
+        strands.append(box((0.014, 0.014, top - bot), (0, -span / 2 + i * 0.14, (top + bot) / 2), netm, "n"))
+    for j in range(7):
+        strands.append(box((0.014, span, 0.014), (0, 0, bot + j * (top - bot) / 6), netm, "n"))
     join(strands, "Net")
-    box((0.05, W + 0.6, 0.07), (0, 0, NET_H - 0.02), netm, "NetTape")
-    # walls + stands
-    box((44, 0.4, 7), (0, 15, 3.5), wall, "WallN"); box((44, 0.4, 7), (0, -15, 3.5), wall, "WallS")
-    box((0.4, 30, 7), (22, 0, 3.5), wall, "WallE"); box((0.4, 30, 7), (-22, 0, 3.5), wall, "WallW")
-    for side, sm in ((1, seat), (-1, seat2)):
-        for i in range(4):
-            box((30, 1.2, 0.5 + i * 0.6), (0, side * (9.5 + i * 1.2), (0.5 + i * 0.6) / 2), sm if i % 2 == 0 else wall, "Stand")
-    for sx, nm in ((-1, neon2), (1, neon1)):
-        box((0.15, 26, 0.25), (sx * 21.7, 0, 3.0), nm, "NeonStrip")
-        box((0.15, 26, 0.12), (sx * 21.7, 0, 5.2), nm, "NeonStrip")
-    for i in range(3):
-        for j in (-1, 1):
-            box((4, 1.2, 0.15), (-8 + i * 8, j * 4, 9), lamp, "Lamp")
+    box((0.06, W + 0.6, 0.09), (0, 0, NET_H - 0.02), netm, "NetTape")
+    # ruin arches behind each baseline frame the view down the court
+    for sx in (-1, 1):
+        ax = sx * 25.5
+        for sy in (-1, 1): pillar(M, ax, sy * 5.5, 8, broken=False, seed=sx * 3 + sy)
+        box((1.4, 12.6, 1.1), (ax, 0, 9.3), M["stone"], "Lintel")
+        box((1.0, 13.6, 0.4), (ax, 0, 10.05), M["stone"], "LintelTop")
+        ico(0.5, (ax, 0, 9.3), M["gold"], 1, scale=(0.4, 1, 1), name="Emblem")
+    # broken colonnade along the sides (outside the play walls at |z| > 15)
+    for i, x in enumerate((-20, -13, -6, 6, 13, 20)):
+        for sy in (-1, 1):
+            pillar(M, x, sy * 16.5, 3.5 + (i * 1.3 % 3), broken=True, seed=i * 7 + sy)
+    box((2.6, 0.9, 0.9), (-9, 17.6, 0.35), M["stone"], "Fallen", rot=(0, 0, 0.4))
+    box((2.2, 0.9, 0.9), (16, -17.8, 0.35), M["stone"], "Fallen", rot=(0, 0, -0.3))
+    for i, (x, y, k) in enumerate(((-23, 15, "blossom"), (-27, 6, "leaf"), (-27, -8, "autumn"), (-21, -16, "leaf"),
+                                   (23, 15, "autumn"), (27, 7, "blossom"), (27, -6, "leaf"), (22, -16, "blossom"),
+                                   (-3, 18.5, "leaf"), (9, 18.5, "blossom"), (-12, -18.5, "autumn"), (3, -18.5, "leaf"))):
+        tree(M, x, y, h=3.8 + (i % 3) * 0.8, kind=k, seed=i)
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            lantern_post(M, sx * (L / 2 + 2.6), sy * (W / 2 + 2.6))
+            flag(M, sx * 15.5, sy * 15.2, M["cloth1"] if sx < 0 else M["cloth2"], h=5.5)
+    for i in range(14):
+        a = i / 14 * math.tau
+        ico(random.Random(i).uniform(0.5, 1.2), (math.cos(a) * 28, math.sin(a) * 18.5, 0.2), M["rock"], 1, scale=(1.3, 1, 0.7), name="Rock")
+    grass_tufts(M, 220, 29, 19.5, lambda x, y: abs(x) < L / 2 + 5 and abs(y) < W / 2 + 5)
     finish("court", s)
 
 
-# ---------------------------------------------------------------- lobby hub
-def build_lobby():
-    s = new_scene("lobby")
-    stone = mat("Stone", (0.24, 0.22, 0.34), rough=0.8)
-    tile = mat("Tile", (0.33, 0.3, 0.46), rough=0.6)
-    gold = mat("Gold", (1.0, 0.75, 0.3), metal=0.9, rough=0.25)
-    portal = mat("Portal", (0.7, 0.35, 1.0), emit=6.0)
-    crystal = mat("Crystal", (0.4, 0.95, 1.0), emit=5.0)
-    awning = mat("Awning", (1.0, 0.35, 0.35), rough=0.6)
-    awning2 = mat("Awning2", (1, 1, 1), rough=0.6)
-    neon = mat("NeonB", (0.15, 0.8, 1.0), emit=5.0)
-    banner = mat("Banner", (0.95, 0.3, 0.6), rough=0.7)
+# ---------------------------------------------------------------- distant backdrop: layered ridge silhouettes + floating islets
+def build_backdrop():
+    s = new_scene("backdrop"); M = env_mats()
+    layers = [(150, mat("Far1", (0.55, 0.52, 0.72)), 28, 1), (200, mat("Far2", (0.7, 0.66, 0.82)), 40, 2), (260, mat("Far3", (0.85, 0.78, 0.86)), 55, 3)]
+    for R, m, hmax, seed in layers:
+        rnd = random.Random(seed); n = 90; verts, faces = [], []
+        for i in range(n + 1):
+            a = i / n * math.tau
+            h = hmax * (0.35 + 0.65 * abs(math.sin(a * 3 + seed)) * rnd.uniform(0.6, 1.0)) + rnd.uniform(-4, 4)
+            verts += [(math.cos(a) * R, math.sin(a) * R, -40), (math.cos(a) * R, math.sin(a) * R, h)]
+        for i in range(n):
+            a0 = i * 2; faces.append((a0, a0 + 2, a0 + 3, a0 + 1))
+        me = bpy.data.meshes.new("ridge"); me.from_pydata(verts, [], faces); me.update()
+        o = bpy.data.objects.new("Ridge%d" % seed, me); s.collection.objects.link(o); o.data.materials.append(m)
+    rnd = random.Random(5)
+    for i in range(9):
+        a = i / 9 * math.tau + rnd.uniform(-0.2, 0.2); r = rnd.uniform(55, 95)
+        x, y, z = math.cos(a) * r, math.sin(a) * r, rnd.uniform(-6, 22)
+        sc = rnd.uniform(2.5, 5)
+        t = cyl(sc, 0.8, (x, y, z), verts=12, m=M["grass"], name="IsletTop"); jitter(t, 0.3, i)
+        u = cone(sc, 0.2, sc * 2.2, (x, y, z - sc * 1.1 - 0.4), M["rockdark"], verts=10, rot=(math.pi, 0, 0), name="IsletRock"); jitter(u, 0.6, i + 50)
+        tree(M, x, y, h=2.5, kind=rnd.choice(["leaf", "blossom", "autumn"]), seed=i + 100, z=z + 0.4)
+    finish("backdrop", s)
 
-    cyl(13, 0.3, (0, 0, -0.15), verts=48, m=stone, name="Plaza")
-    cyl(9, 0.05, (0, 0, 0.02), verts=48, m=tile, name="Inner")
-    bpy.ops.mesh.primitive_torus_add(major_radius=9, minor_radius=0.06, major_segments=64, minor_segments=4, location=(0, 0, 0.05))
-    assign(bpy.context.object, neon)
-    # summon altar (game -z = Blender +y)
-    ay = 7.0
-    for i, r in enumerate((3.2, 2.6, 2.0)):
-        cyl(r, 0.3, (0, ay, 0.15 + i * 0.3), verts=8, m=stone if i % 2 == 0 else tile, name="AltarStep")
-    bpy.ops.mesh.primitive_torus_add(major_radius=1.8, minor_radius=0.14, major_segments=48, minor_segments=8,
+
+# ---------------------------------------------------------------- lobby: shrine courtyard (game -z = Blender +y)
+def build_lobby():
+    s = new_scene("lobby"); M = env_mats()
+    portal = mat("Portal", (0.55, 0.9, 1.0), emit=4.0)
+    crystal = mat("Crystal", (0.75, 0.95, 1.0), emit=4.0)
+    rune = mat("Rune", (1.0, 0.82, 0.45), emit=2.5)
+    island(M, 15, 15, depth=12, seed=9)
+    cyl(10, 0.12, (0, 0, -0.04), verts=10, m=M["stone"], name="Plaza")
+    bpy.ops.mesh.primitive_torus_add(major_radius=10, minor_radius=0.07, major_segments=40, minor_segments=4, location=(0, 0, 0.03))
+    assign(bpy.context.object, M["gold"])
+    for i in range(8):
+        a = i / 8 * math.tau
+        box((0.5, 0.18, 0.04), (math.cos(a) * 3.2, math.sin(a) * 3.2, 0.03), rune, "Rune", rot=(0, 0, a))
+    ay = 7.0  # resonance shrine (summon altar)
+    for i, r in enumerate((3.3, 2.7, 2.1)):
+        cyl(r, 0.3, (0, ay, 0.15 + i * 0.3), verts=8, m=M["stone"], name="AltarStep")
+    bpy.ops.mesh.primitive_torus_add(major_radius=1.8, minor_radius=0.16, major_segments=8, minor_segments=4,
+                                     location=(0, ay, 3.2), rotation=(math.pi / 2, 0, math.pi / 8))
+    ring = bpy.context.object; ring.name = "PortalRing"; assign(ring, M["stone"])
+    bpy.ops.mesh.primitive_torus_add(major_radius=1.55, minor_radius=0.05, major_segments=48, minor_segments=6,
                                      location=(0, ay, 3.2), rotation=(math.pi / 2, 0, 0))
-    ring = bpy.context.object; ring.name = "PortalRing"; assign(ring, portal)
-    bpy.ops.mesh.primitive_torus_add(major_radius=2.05, minor_radius=0.06, major_segments=48, minor_segments=6,
-                                     location=(0, ay, 3.2), rotation=(math.pi / 2, 0, 0))
-    assign(bpy.context.object, gold)
+    pr = bpy.context.object; pr.name = "PortalGlow"; assign(pr, portal)
     for sx in (-1, 1):
-        cyl(0.25, 4.2, (sx * 2.4, ay, 2.1 + 0.6), verts=8, m=gold, name="Pillar")
-        bpy.ops.mesh.primitive_ico_sphere_add(radius=0.35, subdivisions=1, location=(sx * 2.4, ay, 5.1))
-        assign(bpy.context.object, crystal)
-    bpy.ops.mesh.primitive_ico_sphere_add(radius=0.45, subdivisions=0, location=(0, ay, 3.2))
-    c = bpy.context.object; c.name = "Crystal"; c.scale = (1, 1, 1.6); assign(c, crystal)
-    # shop kiosk (game +x side)
-    kx, ky = 7.5, -2
-    box((2.6, 1.4, 1.1), (kx, ky, 0.55), tile, "Counter")
-    for sx in (-1, 1): cyl(0.07, 2.6, (kx + sx * 1.2, ky, 1.3), verts=6, m=gold, name="KPole")
+        pillar(M, sx * 2.6, ay, 4.4, broken=False, seed=sx)
+        cone(0.35, 0, 0.9, (sx * 2.6, ay, 5.5), M["gold"], verts=4, name="Spire")
+    ico(0.45, (0, ay, 3.2), crystal, 0, scale=(1, 1, 1.7), name="Crystal")
+    kx, ky = 7.5, -2  # market stall (shop, game +x)
+    box((2.8, 1.4, 1.0), (kx, ky, 0.5), M["wood"], "Counter")
+    box((3.0, 1.6, 0.1), (kx, ky, 1.05), M["cream"], "CounterTop")
+    for sx in (-1, 1):
+        for sy in (-1, 1): cyl(0.07, 2.7, (kx + sx * 1.35, ky + sy * 0.7, 1.35), verts=6, m=M["wood"], name="StallPost")
     for i in range(6):
-        box((2.8 / 6, 1.8, 0.08), (kx - 1.4 + (i + 0.5) * 2.8 / 6, ky, 2.65), awning if i % 2 == 0 else awning2, "Stripe")
-    # loadout rack (game -x)
-    rx, ry = -7.5, -2
-    box((0.2, 3, 2.4), (rx, ry, 1.2), tile, "Rack")
-    box((0.3, 3.2, 0.12), (rx, ry, 2.45), gold, "RackTop")
-    # arena gate (toward camera, game +z = Blender -y)
-    for sx in (-1, 1):
-        cyl(0.12, 4, (sx * 3, -9.5, 2), verts=6, m=gold, name="BannerPole")
-        box((1.2, 0.05, 2.2), (sx * 3 + sx * 0.65, -9.5, 2.6), banner, "Banner")
+        box((3.2 / 6, 2.0, 0.08), (kx - 1.6 + (i + 0.5) * 3.2 / 6, ky, 2.75), M["cloth1"] if i % 2 == 0 else M["cream"], "Stripe", rot=(0.25, 0, 0))
+    for i in range(3): ico(0.18, (kx - 0.8 + i * 0.8, ky - 0.2, 1.3), [M["lantern"], M["gold"], M["cloth2"]][i], 1, name="Goods")
+    rx, ry = -7.5, -2  # racket rack (loadout, game -x)
+    for sy in (-1, 1): cyl(0.1, 2.6, (rx, ry + sy * 1.4, 1.3), verts=6, m=M["wood"], name="RackPost")
+    box((0.16, 3.2, 0.14), (rx, ry, 2.5), M["wood"], "RackBar")
+    box((0.16, 3.2, 0.14), (rx, ry, 1.2), M["wood"], "RackBar")
+    for i in range(4):
+        y = ry - 1.05 + i * 0.7
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.22, minor_radius=0.03, major_segments=16, minor_segments=4,
+                                         location=(rx + 0.12, y, 2.0), rotation=(0, math.pi / 2, 0))
+        o = bpy.context.object; o.scale = (1, 1, 1.3); assign(o, [M["cloth1"], M["gold"], M["cloth2"], M["cream"]][i])
+        cyl(0.025, 0.45, (rx + 0.12, y, 1.55), verts=5, m=M["wood"], name="RackHandle")
+    gy = -9.6  # gate to the arena (game +z = Blender -y)
+    for sx in (-1, 1): cyl(0.22, 5, (sx * 2.6, gy, 2.5), verts=8, m=M["cloth1"], name="GatePost")
+    box((7.4, 0.5, 0.45), (0, gy, 5.0), M["cloth1"], "GateBeam")
+    box((8.4, 0.6, 0.3), (0, gy, 5.45), M["rockdark"], "GateTop")
+    box((6, 0.3, 0.25), (0, gy, 4.2), M["cloth1"], "GateTie")
+    box((1.2, 0.12, 0.7), (0, gy - 0.2, 4.6), M["gold"], "GatePlaque")
+    for i, (x, y, k) in enumerate(((-11, 6, "blossom"), (11, 6, "autumn"), (-12, -6, "leaf"), (12, -6, "blossom"), (-6, 11.5, "leaf"), (6, 11.5, "autumn"))):
+        tree(M, x, y, h=3.6 + (i % 2) * 0.8, kind=k, seed=i + 20)
+    for a in range(8):
+        ang = a / 8 * math.tau + math.pi / 8
+        lantern_post(M, math.cos(ang) * 9.3, math.sin(ang) * 9.3)
+    flag(M, -4.5, -10, M["cloth2"], 5); flag(M, 4.5, -10, M["cloth2"], 5)
+    grass_tufts(M, 160, 14.5, 14.5, lambda x, y: math.hypot(x, y) < 10.3, seed=3)
     finish("lobby", s)
 
 
 def build_all():
     os.makedirs(OUT, exist_ok=True)
-    for f in (build_racket_round, build_racket_blade, build_racket_wing, build_shuttle, build_avatar, build_court, build_lobby):
+    for f in (build_racket_round, build_racket_blade, build_racket_wing, build_shuttle, build_avatar, build_court, build_backdrop, build_lobby):
         f()
