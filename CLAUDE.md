@@ -32,11 +32,20 @@ Do NOT modify `lele-io/cupidium-relay` or `lele-io/one-in-a-cupidium`.
   room). Host sends `{k:"start", roster}`; bots fill empty seats and run on the host. Sync model: each client owns its player;
   hits are events (`base` = flight number; clash → lower id wins) and every client re-simulates the deterministic shuttle,
   fast-forwarding by ~RTT; host alone awards points/serves/game over. Host leaving ends the match; a leaving client becomes a bot.
+- `economy.js` Yen payouts (`payout`, every match pays), shop (Spin ¥250, ×10 ¥2250, Lucky ¥1200, daily free Spin), codes
+  (FNV-1a hashes in `CODES`), ranked Elo (K 32 online / 16 vs bot) + tiers `RANKS`, Leagues: weekly seasons from
+  2026-11-23, 8-player group = you + 7 simulated rivals seeded by profile id/season (no server), top 2 promote / bottom 2
+  drop across `DIVS`, rewards on rollover (`leagueRollover()` runs on entering the lobby). `matchRewards` = end-screen chips.
+- Meta shifts: edit `PATCH` in rackets.js (version, notes, per-racket stat `adjust`); the Meta tab ranks rackets by total.
 - Model material names the code relies on: avatar `Team`; racket `Frame`, `Accent`, `Grip`, `Strings`; court `Lamp`.
 
 ## Gotchas
 - `Element.append(null)` inserts the text "null" — only `h()` filters nulls.
 - Editing files while Playwright runs triggers a Vite full reload mid-test; wait for `__game.lobby` again.
+
+## Redeem codes (plaintext; the bundle only has hashes)
+RALLYRIOT (3 Spins) · LAUNCHDAY (1 Lucky + ¥500) · SPINCITY (5 Spins) · FEATHERFALL (2 Lucky) · NETGAIN (¥1,500).
+Add one: put `[hashStr("CODE")]: [{spins, lucky, yen}, "label"]` in `CODES`.
 
 ## Relay (relay/)
 `cd relay && npx wrangler dev --port 8787` for local play; `npx wrangler deploy` (needs `wrangler login`). Worker
@@ -53,4 +62,8 @@ for a `BotBrain` (see git history / CLAUDE notes) and log `applyHit`/`onPoint`. 
   with stat compare, 1v1/2v2/3v3 vs bots (bots get random rackets by skill tier).
 - [x] Phase 3 — online via Cloudflare Durable Object relay (tested locally with wrangler dev: 1v1 quick match in sync,
   2v2 private room with bots). Relay deploy pending Cloudflare login.
-- [ ] Phase 4 — Yen, spins/lucky spins, codes, ranked, leagues
+- [x] Phase 4 — Yen, shop, spins/lucky spins, codes, ranked (online queue + vs-bot fallback), leagues, balance patch 1.1.
+
+## Next / ideas
+- Deploy relay (needs `wrangler login`), then set `VITE_RELAY_URL` in `.env.production` and push.
+- Profiles/ratings are local only; a server-side leaderboard would need a DO keyed by player.

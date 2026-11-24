@@ -15,6 +15,7 @@ import { RACKET, randomRacket } from "./rackets.js";
 import { profile, update } from "./save.js";
 import { audioUnlock, sfx } from "./sfx.js";
 import { onlineTabs } from "./online.js";
+import { openShop, openCompete, matchRewards, leagueRollover, rankOf, DIVS } from "./economy.js";
 
 const BOT_NAMES = ["Shuttlebug", "Netrunner", "Lobzilla", "Dropkick", "Feathers", "Smashley", "Rallycat", "Birdie Sanders", "Topspinner", "Clearwater", "Backhand Bo", "Kit Kourt"];
 
@@ -41,6 +42,8 @@ class Game {
     addEventListener("resize", () => this.resize());
     this.view = null;
     this.extraPlayTabs = () => onlineTabs(this);
+    this.extraMenus = { shop: () => openShop(this.ui, () => this.drawTopbar()), ranked: () => openCompete(this.ui, this) };
+    this.onMatchEnd = (r, cfg) => matchRewards(r, cfg);
     this.last = performance.now();
     window.__game = this; // handy for testing in the console
     this.goLobby();
@@ -70,6 +73,11 @@ class Game {
 
   clearUI() { this.ui.innerHTML = ""; }
 
+  toast(text) {
+    const t = h("div", { class: "toast" }, text); document.body.append(t);
+    setTimeout(() => t.classList.add("out"), 4500); setTimeout(() => t.remove(), 5000);
+  }
+
   // ---------------------------------------------------------------- lobby
   goLobby() {
     this.clearUI();
@@ -87,7 +95,9 @@ class Game {
       ...[["play", "PLAY", "hot"], ["summon", "SUMMON", "cool"], ["loadout", "LOADOUT", ""], ["shop", "SHOP & CODES", ""], ["ranked", "RANKED & LEAGUES", ""]].map(([id, label, cls]) =>
         h("button", { class: "btn " + cls, onclick: () => { sfx.ui(); this.openMenu(id); } }, label)));
     this.ui.append(this.topbar, nav, prompt, h("div", { class: "keys lobbykeys" }, "WASD walk · E interact"));
+    const lr = leagueRollover();
     this.drawTopbar();
+    if (lr) this.toast(`Season over: you placed #${lr.place} — ${lr.to > lr.from ? "promoted to " + DIVS[lr.to].name + "!" : lr.to < lr.from ? "dropped to " + DIVS[lr.to].name : "staying in " + DIVS[lr.to].name}. Rewards: ${lr.reward.spins} Spin${lr.reward.spins === 1 ? "" : "s"}${lr.reward.lucky ? ", " + lr.reward.lucky + " Lucky" : ""}, ¥${lr.reward.yen}`);
   }
 
   drawTopbar() {
@@ -99,6 +109,7 @@ class Game {
     this.topbar.append(
       h("div", { class: "me" }, racketIcon(r), h("div", {}, name, h("div", { class: "eqr" }, r.name, " ", rarityBadge(r.rarity)))),
       h("div", { class: "wallet" },
+        h("span", { class: "cur rank", title: "Ranked rating", style: `color:${rankOf(p.rating).color}` }, rankOf(p.rating).name, " ", h("b", {}, p.rating)),
         h("span", { class: "cur yen", title: "Yen" }, "¥ ", h("b", {}, p.yen.toLocaleString())),
         h("span", { class: "cur spin", title: "Spins" }, "◎ ", h("b", {}, p.spins)),
         h("span", { class: "cur lucky", title: "Lucky Spins" }, "✦ ", h("b", {}, p.lucky))));

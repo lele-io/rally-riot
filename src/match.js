@@ -224,7 +224,7 @@ export class Match {
   onOver(w) {
     this.state = "over";
     const won = this.local ? w === this.local.team : null;
-    this.opts.onEnd?.({ won, winner: w, score: [...this.score], stats: { ...this.stats } });
+    this.opts.onEnd?.({ won, winner: w, score: [...this.score], myPoints: this.local ? this.score[this.local.team] : 0, stats: { ...this.stats } });
   }
 
   // ---------------------------------------------------------------- hits

@@ -32,6 +32,7 @@ export function quickTab(game, ranked) {
     status.innerHTML = ""; status.append(h("span", { class: "searching" }, `Searching for a ${size}v${size} match…`), " ", h("button", { class: "btn", onclick: () => { conn?.close(); conn = null; status.textContent = "Cancelled."; } }, "Cancel"));
     try { await conn.ready; } catch (e) { status.textContent = "Can't reach the online server right now."; return; }
     conn.send({ k: "queue", name: p.name, rating: p.rating, racket: p.equipped });
+    if (ranked && size === 1) setTimeout(() => { if (conn && conn.open) status.append(h("div", { class: "muted", style: "margin-top:6px" }, "Quiet right now — keep waiting, or play Ranked vs Bot below.")); }, 25000);
     conn.on((m) => {
       if (m.k !== "match") return;
       conn.close(); conn = null;
@@ -139,7 +140,9 @@ export function startOnline(game, { conn, me, hostId, size, roster, points, rank
   }));
   const meP = roster.find((p) => p.id === me);
   const tn = (t) => (size === 1 ? roster.find((p) => p.team === t)?.name : t === meP.team ? "YOUR TEAM" : "RIVALS");
-  game.startMatch({ type: ranked ? "ranked" : "online", size, players, localId: me, names: [tn(0), tn(1)], points, net, isHost });
+  const opp = roster.filter((p) => p.team !== meP.team && !p.bot && p.rating);
+  const oppRating = opp.length ? opp.reduce((a, p) => a + p.rating, 0) / opp.length : 1000;
+  game.startMatch({ type: ranked ? "ranked" : "online", size, players, localId: me, names: [tn(0), tn(1)], points, net, isHost, oppRating });
 }
 
 export const relayInfo = () => RELAY_URL;

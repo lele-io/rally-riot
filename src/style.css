@@ -145,3 +145,21 @@ details summary { cursor: pointer; margin-top: 10px; font-weight: 800; color: va
 .dot { width: 10px; height: 10px; border-radius: 50%; } .dot.t0 { background: var(--t0); } .dot.t1 { background: var(--t1); }
 .searching::before { content: ""; display: inline-block; width: 12px; height: 12px; margin-right: 8px; border-radius: 50%; border: 2px solid var(--cool); border-top-color: transparent; animation: spin .8s linear infinite; vertical-align: -1px; }
 @keyframes spin { to { transform: rotate(360deg) } }
+.cur.rank b { margin-left: 4px; }
+.toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 40; background: var(--panel); border: 1px solid var(--gold); color: #fff; font-weight: 800; padding: 12px 18px; border-radius: 12px; max-width: min(560px, calc(100vw - 32px)); box-shadow: 0 10px 40px #0008; transition: opacity .4s; }
+.toast.out { opacity: 0; }
+.shopgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.shopitem { text-align: left; padding: 14px; }
+.shopitem .price { margin-top: 8px; font-size: 18px; }
+.codein.wide { width: 220px; }
+.chip.yen { color: var(--gold); }
+.rankcard { border-radius: 14px; padding: 14px 16px; background: linear-gradient(90deg, color-mix(in srgb, var(--rc) 28%, transparent), #0004); border-left: 5px solid var(--rc); font-weight: 800; }
+.rankcard .rk { font-family: "Russo One"; font-size: 26px; color: var(--rc); }
+.rankladder { display: flex; gap: 6px; flex-wrap: wrap; }
+.rankladder span { font-size: 12px; font-weight: 900; padding: 4px 8px; border-radius: 8px; color: var(--rc); border: 1px solid #ffffff1a; opacity: .55; }
+.rankladder span.on { opacity: 1; border-color: var(--rc); }
+.rankladder small { margin-left: 4px; color: var(--dim); font-weight: 800; }
+.league tr.you td { color: var(--gold); font-weight: 900; }
+.league tr.up td:first-child { color: #7dffb0; } .league tr.down td:first-child { color: #ff8aa5; }
+.notes { margin: 0; padding-left: 18px; color: var(--ink); font-size: 14px; line-height: 1.5; }
+.member .ricon svg { width: 22px; height: 30px; }

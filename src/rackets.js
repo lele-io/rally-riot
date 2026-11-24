@@ -40,7 +40,17 @@ export const RACKETS = [
 export const RACKET = Object.fromEntries(RACKETS.map((r) => [r.id, r]));
 
 // Balance patch: the meta shifts between updates. Applied on top of base stats (see CLAUDE.md).
-export const PATCH = { version: "1.0", notes: ["Launch balance."], adjust: {} };
+// To shift the meta in an update: bump `version`, write player-facing notes, and nudge stats in `adjust`.
+export const PATCH = {
+  version: "1.1",
+  notes: [
+    "Gale Cutter: Movement +1 — chasers rejoice.",
+    "Thunderhook: Dash −1 — still fast, slightly less everywhere at once.",
+    "Venom Curl: Spin +1, Reach +1 — curve shots back on top.",
+    "Starfall Requiem: Power −1 — smashes were ending rallies too fast.",
+  ],
+  adjust: { gale: { movement: 1 }, thunderhook: { dash: -1 }, venom: { spin: 1, reach: 1 }, starfall: { power: -1 } },
+};
 
 export function racketStats(id) {
   const r = RACKET[id] || RACKET.practice;
