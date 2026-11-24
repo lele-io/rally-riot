@@ -1,0 +1,73 @@
+:root {
+  --bg: #0d0b18; --panel: rgba(20, 16, 38, 0.86); --line: rgba(255, 255, 255, 0.12);
+  --ink: #f4f1ff; --dim: #a9a3c9; --hot: #ff4d8d; --cool: #3dd6ff; --gold: #ffd23d;
+  --t0: #3d8bff; --t1: #ff4d6d;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); font-family: Nunito, system-ui, sans-serif; }
+canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+#ui { position: fixed; inset: 0; pointer-events: none; }
+#ui > * { pointer-events: auto; }
+#ui .hud { pointer-events: none; }
+button { font: inherit; cursor: pointer; }
+.display { font-family: "Russo One", sans-serif; letter-spacing: 0.02em; }
+
+#loading { position: fixed; inset: 0; display: grid; place-content: center; gap: 18px; background: var(--bg); z-index: 50; transition: opacity .4s; }
+#loading.done { opacity: 0; pointer-events: none; }
+.logo { font-family: "Russo One"; font-size: clamp(42px, 9vw, 96px); line-height: .9; text-align: center; font-style: italic;
+  background: linear-gradient(180deg, #fff, #ffd2ea); -webkit-background-clip: text; color: transparent; filter: drop-shadow(0 4px 0 #ff2d7a) drop-shadow(0 0 24px #ff4d8d88); }
+.logo span { display: block; background: linear-gradient(180deg, #bff4ff, #3dd6ff); -webkit-background-clip: text; filter: drop-shadow(0 4px 0 #1a64ff); }
+#loading .bar { width: 260px; height: 8px; border-radius: 9px; background: #ffffff1a; overflow: hidden; margin: 0 auto; }
+#loading .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--hot), var(--cool)); transition: width .2s; }
+
+/* ---------- HUD ---------- */
+.hud { position: absolute; inset: 0; }
+.scorebar { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); display: flex; align-items: stretch; gap: 0;
+  font-family: "Russo One"; filter: drop-shadow(0 6px 18px #0008); }
+.scorebar .team { display: flex; align-items: center; gap: 12px; padding: 6px 16px; background: var(--panel); border: 1px solid var(--line); }
+.scorebar .t0 { border-radius: 14px 0 0 14px; border-left: 5px solid var(--t0); }
+.scorebar .t1 { border-radius: 0 14px 14px 0; border-right: 5px solid var(--t1); }
+.scorebar b { font-size: 34px; min-width: 34px; text-align: center; }
+.scorebar .tname { font-family: Nunito; font-weight: 800; font-size: 14px; color: var(--dim); max-width: 140px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.scorebar .serving .tname::after { content: " ●"; color: var(--gold); }
+.scorebar .vs { display: grid; place-items: center; padding: 0 10px; background: #000a; font-size: 12px; color: var(--dim); }
+.banner { position: absolute; top: 26%; left: 0; right: 0; text-align: center; opacity: 0; transform: scale(.8); transition: opacity .2s, transform .25s cubic-bezier(.2, 1.6, .4, 1); }
+.banner.show { opacity: 1; transform: scale(1); }
+.banner .big { font-family: "Russo One"; font-size: clamp(40px, 8vw, 84px); font-style: italic; text-shadow: 0 5px 0 #0007, 0 0 30px currentColor; }
+.banner .sub { font-weight: 800; font-size: 18px; color: var(--ink); text-shadow: 0 2px 8px #000; }
+.pops { position: absolute; top: 40%; left: 0; right: 0; text-align: center; }
+.pop { font-family: "Russo One"; font-size: 54px; font-style: italic; animation: pop 1.1s ease-out forwards; position: absolute; left: 0; right: 0; }
+.pop.small { font-size: 28px; }
+@keyframes pop { 0% { transform: scale(2.2) rotate(-6deg); opacity: 0 } 12% { transform: scale(1) rotate(-4deg); opacity: 1 } 70% { opacity: 1 } 100% { transform: translateY(-60px) rotate(-4deg); opacity: 0 } }
+.servehint { position: absolute; bottom: 92px; left: 0; right: 0; text-align: center; font-weight: 900; font-size: 18px; text-shadow: 0 2px 8px #000; transition: opacity .3s; }
+.meters { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); display: flex; gap: 14px; }
+.meter { position: relative; width: 170px; height: 22px; border-radius: 11px; background: var(--panel); border: 1px solid var(--line); overflow: hidden; }
+.meter i { position: absolute; inset: 0 auto 0 0; width: 0; background: linear-gradient(90deg, #ffb13d, #ffd23d); }
+.meter i.full { background: linear-gradient(90deg, #ff3d8d, #ff8a3d); box-shadow: 0 0 16px #ff3d8d; }
+.meter.dash i { background: #3dd6ff88; }
+.meter.dash i.full { background: linear-gradient(90deg, #3dd6ff, #8affef); box-shadow: none; }
+.meter span { position: relative; display: block; text-align: center; font-size: 12px; font-weight: 900; line-height: 22px; letter-spacing: .08em; text-shadow: 0 1px 2px #000; }
+.keys { position: absolute; bottom: 12px; left: 0; right: 0; text-align: center; font-size: 12px; color: var(--dim); text-shadow: 0 1px 3px #000; }
+
+/* ---------- panels & screens ---------- */
+.screen { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; }
+.screen.dim { background: radial-gradient(ellipse at center, #0d0b18aa, #0d0b18ee); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 22px; backdrop-filter: blur(8px); box-shadow: 0 20px 60px #0009; max-width: 100%; }
+.btn { border: 0; border-radius: 12px; padding: 12px 20px; font-weight: 900; font-size: 16px; color: #fff; background: #ffffff14; border: 1px solid var(--line); transition: transform .08s, background .15s; }
+.btn:hover { background: #ffffff24; transform: translateY(-1px); }
+.btn:active { transform: translateY(1px); }
+.btn.hot { background: linear-gradient(180deg, #ff5c9a, #e0266d); border-color: #ff8fbb; box-shadow: 0 4px 0 #8f1543, 0 0 24px #ff4d8d55; }
+.btn.cool { background: linear-gradient(180deg, #4fdcff, #1a8fe0); border-color: #9feaff; box-shadow: 0 4px 0 #0d4f8f; }
+.btn.gold { background: linear-gradient(180deg, #ffd85c, #e09a1a); border-color: #ffe9a3; color: #3a2400; box-shadow: 0 4px 0 #8f5a0d; }
+.btn:disabled { opacity: .45; cursor: default; transform: none; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.col { display: flex; flex-direction: column; gap: 10px; }
+h2 { font-family: "Russo One"; margin: 0 0 12px; font-weight: 400; }
+.muted { color: var(--dim); }
+.end .big { font-family: "Russo One"; font-size: 64px; font-style: italic; text-align: center; }
+.end .final { font-family: "Russo One"; font-size: 36px; text-align: center; margin: 4px 0 14px; }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin: 8px 0 16px; }
+.chip { padding: 6px 12px; border-radius: 99px; background: #ffffff12; font-weight: 800; font-size: 14px; }
+.seg { display: inline-flex; background: #0006; border-radius: 12px; padding: 4px; gap: 4px; }
+.seg button { border: 0; background: transparent; color: var(--dim); font-weight: 900; padding: 8px 14px; border-radius: 9px; }
+.seg button.on { background: #ffffff20; color: #fff; }
