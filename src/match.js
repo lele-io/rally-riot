@@ -45,7 +45,7 @@ export class Match {
     sun.position.set(-6, 16, 8); sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
     Object.assign(sun.shadow.camera, { left: -14, right: 14, top: 10, bottom: -10, near: 1, far: 40 });
-    sun.shadow.bias = -0.0005;
+    sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.03;
     s.add(sun);
     for (const x of [-8, 0, 8]) { const l = new THREE.PointLight("#ffe9c8", 14, 20, 1.8); l.position.set(x, 8.5, 0); s.add(l); }
 
@@ -98,7 +98,8 @@ export class Match {
     this.server = team[this.serveIdx[this.serveTeam] % team.length] || null;
     for (const p of this.players) {
       const h = this.homeFor(p);
-      if (p === this.server) p.place(p.side * 6.5, (this.score[this.serveTeam] % 2 ? -1.8 : 1.8) * -p.side);
+      if (p === this.server) p.place(p.side * 6.5, this.serveZ());
+      else if (p.team === this.serveTeam && Math.hypot(h[0] - p.side * 6.5, h[1] - this.serveZ()) < 2) p.place(p.side * 3.6, -Math.sign(this.serveZ()) * 2.6);
       else p.place(h[0], h[1]);
       p.locked = false;
     }
@@ -107,6 +108,8 @@ export class Match {
     this.fx.clearTrail();
     this.stats.rally = 0;
   }
+
+  serveZ() { return (this.score[this.serveTeam] % 2 ? -1.8 : 1.8) * (this.serveTeam === 0 ? 1 : -1); }
 
   setState(st, data) {
     this.state = st; this.stateT = 0;

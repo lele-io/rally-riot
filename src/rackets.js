@@ -50,6 +50,28 @@ export function racketStats(id) {
   return s;
 }
 
+// ---- summoning. Lucky spins use the `lucky` table (no Commons-heavy pool). Pity: 40 summons without a
+// Legendary or better guarantees one.
+export const PITY = 40;
+export function rollRarity(lucky, pity) {
+  if (pity >= PITY - 1) return Math.random() < 0.85 ? "legendary" : "mythical";
+  const key = lucky ? "lucky" : "weight";
+  const total = RARITIES.reduce((a, r) => a + r[key], 0);
+  let x = Math.random() * total;
+  for (const r of RARITIES) { x -= r[key]; if (x <= 0) return r.id; }
+  return "common";
+}
+export function summon(lucky, pity) {
+  const rarity = rollRarity(lucky, pity);
+  const pool = RACKETS.filter((r) => r.rarity === rarity);
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+export const statTotal = (id) => Object.values(racketStats(id)).reduce((a, b) => a + b, 0);
+export function randomRacket(maxTier) {
+  const pool = RACKETS.filter((r) => RARITY[r.rarity].tier <= maxTier);
+  return pool[Math.floor(Math.random() * pool.length)].id;
+}
+
 // stats -> physics numbers used by Player / Match
 export function derive(stats) {
   return {

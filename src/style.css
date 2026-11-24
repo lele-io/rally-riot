@@ -71,3 +71,69 @@ h2 { font-family: "Russo One"; margin: 0 0 12px; font-weight: 400; }
 .seg { display: inline-flex; background: #0006; border-radius: 12px; padding: 4px; gap: 4px; }
 .seg button { border: 0; background: transparent; color: var(--dim); font-weight: 900; padding: 8px 14px; border-radius: 9px; }
 .seg button.on { background: #ffffff20; color: #fff; }
+
+/* ---------- lobby ---------- */
+.topbar { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; pointer-events: none; }
+.topbar > * { pointer-events: auto; }
+.topbar .me { display: flex; align-items: center; gap: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 6px 14px 6px 8px; }
+.topbar .name { background: transparent; border: 0; color: #fff; font: 900 18px Nunito; width: 170px; padding: 2px 4px; border-radius: 6px; }
+.topbar .name:hover, .topbar .name:focus { background: #ffffff14; outline: none; }
+.topbar .eqr { font-size: 12px; color: var(--dim); font-weight: 800; padding-left: 4px; }
+.wallet { display: flex; gap: 8px; }
+.cur { background: var(--panel); border: 1px solid var(--line); border-radius: 99px; padding: 8px 14px; font-weight: 900; }
+.cur.yen { color: #ffd23d; } .cur.spin { color: #4fdcff; } .cur.lucky { color: #ff8ae0; }
+.cur b { color: #fff; }
+.nav { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 10px; }
+.nav .btn { text-align: left; min-width: 210px; font-size: 17px; }
+.spotprompt { position: absolute; bottom: 70px; left: 50%; transform: translate(-50%, 10px); opacity: 0; transition: .2s; background: var(--panel); border: 1px solid var(--line); padding: 10px 18px; border-radius: 12px; font-weight: 900; pointer-events: none; }
+.spotprompt.show { opacity: 1; transform: translate(-50%, 0); }
+.lobbykeys { position: absolute; bottom: 12px; left: 0; right: 0; text-align: center; font-size: 12px; color: var(--dim); pointer-events: none; }
+.drawer { position: absolute; top: 76px; right: 16px; bottom: 16px; width: min(560px, calc(100vw - 32px)); display: flex; }
+.panel { flex: 1; display: flex; flex-direction: column; min-height: 0; padding: 18px; animation: slidein .25s cubic-bezier(.2, 1.2, .4, 1); }
+@keyframes slidein { from { transform: translateX(40px); opacity: 0 } }
+.phead { display: flex; justify-content: space-between; align-items: center; }
+.phead h2 { margin: 0; font-size: 24px; }
+.x { background: #ffffff12; border: 0; color: #fff; width: 34px; height: 34px; border-radius: 10px; font-size: 16px; }
+.pbody { overflow: auto; margin-top: 12px; padding-right: 4px; }
+.lbl { font-weight: 900; font-size: 12px; letter-spacing: .1em; color: var(--dim); text-transform: uppercase; }
+.tabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+.tabs button { border: 1px solid var(--line); background: transparent; color: var(--dim); font-weight: 900; padding: 8px 14px; border-radius: 10px; }
+.tabs button.on { background: #ffffff1c; color: #fff; }
+.btn small { display: block; font-size: 11px; opacity: .8; font-weight: 800; }
+.rbadge { display: inline-block; font-size: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; color: var(--rc); border: 1px solid var(--rc); border-radius: 6px; padding: 1px 6px; background: color-mix(in srgb, var(--rc) 14%, transparent); }
+.rgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+.rcard { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 6px 8px; border-radius: 12px; border: 1px solid var(--line); border-bottom: 3px solid var(--rc); color: #fff;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--rc) 18%, transparent), #0003); }
+.rcard.locked { filter: grayscale(1) brightness(.5); cursor: default; }
+.rcard.sel { outline: 2px solid #fff; }
+.rcard.eq::after { content: "E"; position: absolute; top: 4px; left: 6px; font-size: 10px; font-weight: 900; background: #ff4d8d; border-radius: 4px; padding: 0 4px; }
+.rcard .rn { font-size: 11px; font-weight: 800; text-align: center; line-height: 1.1; }
+.rcard .cnt { position: absolute; top: 4px; right: 6px; font-size: 11px; font-weight: 900; color: var(--dim); }
+.rcard .new { position: absolute; top: 4px; right: 6px; font-size: 10px; font-weight: 900; color: #3d2a00; background: var(--gold); padding: 0 4px; border-radius: 4px; }
+.ricon.locked svg { opacity: .35; }
+.detail { background: #0004; border-radius: 14px; padding: 14px; margin-bottom: 14px; }
+.dhead { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.dname { font-family: "Russo One"; font-size: 22px; }
+.stats { display: grid; gap: 6px; }
+.stat { display: grid; grid-template-columns: 84px 1fr 26px 30px; align-items: center; gap: 8px; font-weight: 800; font-size: 13px; }
+.stat .sb { height: 9px; background: #ffffff14; border-radius: 9px; overflow: hidden; }
+.stat .sb i { display: block; height: 100%; background: linear-gradient(90deg, var(--cool), #8affef); border-radius: 9px; }
+.stat b { text-align: right; }
+.sd.up { color: #6dff9e; } .sd.down { color: #ff6d8a; }
+.rates { width: 100%; border-collapse: collapse; margin-top: 8px; font-weight: 800; font-size: 13px; }
+.rates td, .rates th { padding: 4px 8px; text-align: left; border-bottom: 1px solid var(--line); }
+details summary { cursor: pointer; margin-top: 10px; font-weight: 800; color: var(--dim); }
+.reveal { position: absolute; inset: 0; display: grid; place-items: end center; padding: 24px; }
+.revealcard { width: min(420px, 100%); background: var(--panel); border: 2px solid var(--rc); box-shadow: 0 0 40px color-mix(in srgb, var(--rc) 50%, transparent); border-radius: 18px; padding: 18px; text-align: center; animation: slidein .3s; }
+.revealcard .dname { color: var(--rc); font-size: 30px; margin: 6px 0 2px; text-shadow: 0 0 20px var(--rc); }
+.revealcard .stats { text-align: left; margin-top: 12px; }
+.new.big { color: var(--gold); font-family: "Russo One"; font-size: 20px; }
+.reveal .card .rgrid { grid-template-columns: repeat(5, 1fr); }
+@media (max-width: 720px) {
+  .nav { top: auto; bottom: 40px; transform: none; left: 16px; right: 16px; flex-direction: row; flex-wrap: wrap; justify-content: center; }
+  .nav .btn { min-width: 0; font-size: 13px; padding: 10px 12px; }
+  .drawer { top: 120px; }
+  .reveal .card .rgrid { grid-template-columns: repeat(3, 1fr); }
+}
+#ui.cine .nav, #ui.cine .lobbykeys, #ui.cine .spotprompt { display: none; }
+@media (min-width: 801px) { .reveal { place-items: center end; padding-right: 6vw; } }

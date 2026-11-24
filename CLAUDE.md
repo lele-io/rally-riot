@@ -19,9 +19,18 @@ Do NOT modify `lele-io/cupidium-relay` or `lele-io/one-in-a-cupidium`.
 - `match.js` Rapier world, serve/rally/point/over flow, rally scoring to 11 (win by 2, cap +4), hit → `computeShot` → `applyHit`.
   Team 0 plays x<0, team 1 x>0; camera sits behind the local player's half (controls mirrored for team 1).
   `authority` (offline or host) decides points; `net` hooks send hit/point/serve/over.
+- `lobby.js` walkable hub (Lobby view): hotspots (altar=summon, rack=loadout, kiosk=shop, gate=play), summon cutscene
+  (`playSummon`/`endSummon`), menu close-up camera. `screens.js` DOM panels: loadout, summon (+reveal), play tabs.
+- `save.js` localStorage profile (`rallyriot.profile.v1`): yen, spins, lucky, inv, equipped, pity, codes, rating, league, stats.
+- `main.js` Game: renderer + bloom composer, views (Lobby | Match), `startMatch(cfg)`, end screen. Phase hooks:
+  `extraPlayTabs()`, `extraMenus[id]()`, `onMatchEnd(result,cfg)`.
 - `bot.js` predicts flight, picks reachable intercept, jumps/charges for smashes, releases at closest approach, aims away from opponents.
 - `fx.js` additive particles, shuttle trail, rings, shake. `sfx.js` synthesized WebAudio. `ui.js` HUD + `h()` DOM helper.
 - Model material names the code relies on: avatar `Team`; racket `Frame`, `Accent`, `Grip`, `Strings`; court `Lamp`.
+
+## Gotchas
+- `Element.append(null)` inserts the text "null" — only `h()` filters nulls.
+- Editing files while Playwright runs triggers a Vite full reload mid-test; wait for `__game.lobby` again.
 
 ## Testing
 Playwright MCP against `npm run dev`. `window.__game.view` is the current Match. Bot-vs-bot check: swap the local player
@@ -29,6 +38,7 @@ for a `BotBrain` (see git history / CLAUDE notes) and log `applyHit`/`onPoint`. 
 
 ## Progress
 - [x] Phase 1 — offline 1v1 vs bot: movement, jump, swing, charge, dash, shuttle physics with spin, scoring, FX.
-- [ ] Phase 2 — racket stats system + lobby hub
+- [x] Phase 2 — racket stats system + lobby hub: 18 rackets/6 rarities, summon (spin, ×10, lucky, pity 40), loadout
+  with stat compare, 1v1/2v2/3v3 vs bots (bots get random rackets by skill tier).
 - [ ] Phase 3 — online via Cloudflare Durable Object relay
 - [ ] Phase 4 — Yen, spins/lucky spins, codes, ranked, leagues
