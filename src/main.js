@@ -14,6 +14,7 @@ import { openLoadout, openSummon, openPlay, panel, racketIcon, rarityBadge } fro
 import { RACKET, randomRacket } from "./rackets.js";
 import { profile, update } from "./save.js";
 import { audioUnlock, sfx } from "./sfx.js";
+import { onlineTabs } from "./online.js";
 
 const BOT_NAMES = ["Shuttlebug", "Netrunner", "Lobzilla", "Dropkick", "Feathers", "Smashley", "Rallycat", "Birdie Sanders", "Topspinner", "Clearwater", "Backhand Bo", "Kit Kourt"];
 
@@ -39,6 +40,7 @@ class Game {
 
     addEventListener("resize", () => this.resize());
     this.view = null;
+    this.extraPlayTabs = () => onlineTabs(this);
     this.last = performance.now();
     window.__game = this; // handy for testing in the console
     this.goLobby();
@@ -133,7 +135,8 @@ class Game {
     this.clearUI(); this.lobby = null; this.menu = null; this.topbar = null;
     const players = cfg.players || [{ id: "me", name: p.name, team: 0, racket: p.equipped, kind: "local" }, ...this.botPlayers(cfg.size, cfg.level, cfg.size - 1)];
     const names = cfg.names || (cfg.size === 1 ? [p.name, players[1].name] : ["YOUR TEAM", "RIVALS"]);
-    const hud = new MatchHUD(this.ui, names);
+    const localTeam = players.find((q) => q.id === (cfg.localId || "me"))?.team || 0;
+    const hud = new MatchHUD(this.ui, names, localTeam === 1);
     const m = new Match(this, {
       teamSize: cfg.size, localId: cfg.localId || "me", pointsToWin: cfg.points || (cfg.size === 1 ? 11 : 15), ui: hud, players,
       net: cfg.net, isHost: cfg.isHost,
@@ -146,11 +149,11 @@ class Game {
 
   endScreen(r, cfg) {
     const won = r.won;
-    update((q) => { q.stats.matches++; if (won) q.stats.wins++; q.stats.smashes += r.stats.smashes; });
+    if (!r.aborted) update((q) => { q.stats.matches++; if (won) q.stats.wins++; q.stats.smashes += r.stats.smashes; });
     const reward = this.onMatchEnd ? this.onMatchEnd(r, cfg) : null; // phase 4 hooks in rewards
     this.ui.append(h("div", { class: "screen dim end" },
       h("div", { class: "card col", style: "min-width:340px;align-items:center" },
-        h("div", { class: "big", style: `color:${won ? "#7dffb0" : "#ff7d9b"}` }, won ? "VICTORY" : "DEFEAT"),
+        h("div", { class: "big", style: `color:${won ? "#7dffb0" : "#ff7d9b"}` }, r.aborted ? "MATCH ENDED" : won ? "VICTORY" : "DEFEAT"),
         h("div", { class: "final" }, `${r.score[0]} — ${r.score[1]}`),
         h("div", { class: "chips" }, h("span", { class: "chip" }, `Hits ${r.stats.hits}`), h("span", { class: "chip" }, `Smashes ${r.stats.smashes}`), h("span", { class: "chip" }, `Longest rally ${r.stats.longest}`)),
         reward,

@@ -26,19 +26,31 @@ Do NOT modify `lele-io/cupidium-relay` or `lele-io/one-in-a-cupidium`.
   `extraPlayTabs()`, `extraMenus[id]()`, `onMatchEnd(result,cfg)`.
 - `bot.js` predicts flight, picks reachable intercept, jumps/charges for smashes, releases at closest approach, aims away from opponents.
 - `fx.js` additive particles, shuttle trail, rings, shake. `sfx.js` synthesized WebAudio. `ui.js` HUD + `h()` DOM helper.
+- `net.js` `connect(room, me)` + `Session` (the Match's `net`): 15 Hz player states, ping/pong RTT to host. Relay URL from
+  `VITE_RELAY_URL` (`.env.production`), defaults to `http://localhost:8787` in dev.
+- `online.js` Quick Match (queue room `mm-<n>` / ranked `mm-r<n>`) and Private Rooms (`p-<CODE>`, the room doubles as the game
+  room). Host sends `{k:"start", roster}`; bots fill empty seats and run on the host. Sync model: each client owns its player;
+  hits are events (`base` = flight number; clash → lower id wins) and every client re-simulates the deterministic shuttle,
+  fast-forwarding by ~RTT; host alone awards points/serves/game over. Host leaving ends the match; a leaving client becomes a bot.
 - Model material names the code relies on: avatar `Team`; racket `Frame`, `Accent`, `Grip`, `Strings`; court `Lamp`.
 
 ## Gotchas
 - `Element.append(null)` inserts the text "null" — only `h()` filters nulls.
 - Editing files while Playwright runs triggers a Vite full reload mid-test; wait for `__game.lobby` again.
 
+## Relay (relay/)
+`cd relay && npx wrangler dev --port 8787` for local play; `npx wrangler deploy` (needs `wrangler login`). Worker
+`rally-riot-relay`, DO class `Room`. `node tools/relay-test.mjs [url]` checks hello/join/leave, fan-out and matchmaking.
+
 ## Testing
-Playwright MCP against `npm run dev`. `window.__game.view` is the current Match. Bot-vs-bot check: swap the local player
+Playwright MCP against `npm run dev`. `window.__game.view` is the current Match. Two-client online test: `browser_run_code_unsafe` with `page.context().newPage()`, drive each
+local player with `m.localInput = () => brain.think(1/60)`. Bot-vs-bot check: swap the local player
 for a `BotBrain` (see git history / CLAUDE notes) and log `applyHit`/`onPoint`. Look at screenshots before calling UI done.
 
 ## Progress
 - [x] Phase 1 — offline 1v1 vs bot: movement, jump, swing, charge, dash, shuttle physics with spin, scoring, FX.
 - [x] Phase 2 — racket stats system + lobby hub: 18 rackets/6 rarities, summon (spin, ×10, lucky, pity 40), loadout
   with stat compare, 1v1/2v2/3v3 vs bots (bots get random rackets by skill tier).
-- [ ] Phase 3 — online via Cloudflare Durable Object relay
+- [x] Phase 3 — online via Cloudflare Durable Object relay (tested locally with wrangler dev: 1v1 quick match in sync,
+  2v2 private room with bots). Relay deploy pending Cloudflare login.
 - [ ] Phase 4 — Yen, spins/lucky spins, codes, ranked, leagues

@@ -13,7 +13,8 @@ export const h = (tag, attrs = {}, ...kids) => {
 };
 
 export class MatchHUD {
-  constructor(root, names) {
+  constructor(root, names, flip = false) {
+    this.flip = flip; if (flip) names = [names[1], names[0]];
     this.root = h("div", { class: "hud" },
       h("div", { class: "scorebar" },
         h("div", { class: "team t0" }, h("span", { class: "tname" }, names[0]), h("b", { class: "s0" }, "0")),
@@ -25,10 +26,12 @@ export class MatchHUD {
         h("div", { class: "meter charge" }, h("i"), h("span", {}, "POWER")),
         h("div", { class: "meter dash" }, h("i"), h("span", {}, "DASH  Q"))),
       h("div", { class: "keys" }, "WASD move · Space jump · Click swing (hold = power) · Q dash · Mouse aims"));
+    if (flip) this.root.classList.add("flip");
     root.append(this.root);
     this.bannerT = null;
   }
   score(s, serveTeam) {
+    if (this.flip) { s = [s[1], s[0]]; serveTeam = serveTeam == null ? null : 1 - serveTeam; }
     $(".s0", this.root).textContent = s[0]; $(".s1", this.root).textContent = s[1];
     $(".t0", this.root).classList.toggle("serving", serveTeam === 0);
     $(".t1", this.root).classList.toggle("serving", serveTeam === 1);

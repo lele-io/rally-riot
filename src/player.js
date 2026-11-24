@@ -138,14 +138,29 @@ export class Player {
     this.facing.lerp(new THREE.Vector3(fx / fl, 0, fz / fl), 0.25).normalize();
   }
 
-  // set from the network (remote players)
-  applyRemote(st) {
+  // ---- network: what we send about ourselves, and how remote players follow what they send
+  netState() {
+    const r = (v) => Math.round(v * 100) / 100;
+    return { id: this.id, p: [r(this.pos.x), r(this.pos.y), r(this.pos.z)], v: [r(this.vel.x + this.dashVel.x), r(this.vel.y), r(this.vel.z + this.dashVel.z)],
+      f: [r(this.facing.x), r(this.facing.z)], sw: this.swing.st, c: r(this.swing.charge), d: this.dashT > 0 ? 1 : 0, rk: this.racketId };
+  }
+  setRemote(st) {
+    this.remote = { ...st, age: 0 };
+    if (st.rk && st.rk !== this.racketId) this.setRacket(st.rk);
+    if (st.sw === "swing" && this.swing.st !== "swing") this.match.onSwing(this);
+    this.swing.st = st.sw; this.swing.charge = st.c; this.dashT = st.d ? 0.1 : 0;
+  }
+  tickRemote(dt) {
     this.prevPos.copy(this.pos);
-    this.pos.set(st.p[0], st.p[1], st.p[2]);
-    this.facing.set(st.f[0], 0, st.f[1]).normalize();
-    this.body.setNextKinematicTranslation({ x: st.p[0], y: st.p[1] + CAP_Y, z: st.p[2] });
-    this.swing.st = st.sw; this.swing.charge = st.c;
-    this.onGround = st.p[1] < 0.02; this.dashT = st.dash ? 0.1 : 0;
+    const r = this.remote; if (!r) return;
+    r.age += dt;
+    // aim slightly ahead along their velocity, then ease toward it (hides 15 Hz updates)
+    const ahead = Math.min(r.age, 0.12);
+    const tx = r.p[0] + r.v[0] * ahead, ty = Math.max(0, r.p[1] + r.v[1] * ahead), tz = r.p[2] + r.v[2] * ahead;
+    this.pos.x += (tx - this.pos.x) * 0.35; this.pos.y += (ty - this.pos.y) * 0.35; this.pos.z += (tz - this.pos.z) * 0.35;
+    this.facing.lerp(new THREE.Vector3(r.f[0], 0, r.f[1]), 0.3).normalize();
+    this.onGround = this.pos.y < 0.03;
+    this.body.setNextKinematicTranslation({ x: this.pos.x, y: this.pos.y + CAP_Y, z: this.pos.z });
   }
 
   render(dt, alpha) {

@@ -81,6 +81,7 @@ export class Match {
     this.camera.position.copy(this.camPos); this.camera.lookAt(this.camLook);
     this.ray = new THREE.Raycaster(); this.plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 
+    if (this.net) this.net.match = this;
     this.resetPositions();
     this.setState("intro");
   }
@@ -140,6 +141,7 @@ export class Match {
       let inp = null;
       if (p === this.local) inp = this.localInput(input);
       else if (p.kind === "bot") inp = this.brains.get(p).think(dt);
+      else if (p.kind === "remote") p.tickRemote(dt);
       if (inp) p.update(dt, inp);
     }
     input.endTick();
@@ -243,6 +245,7 @@ export class Match {
     p.swing.hit = true;
     const aim = p === this.local ? this.aim : this.brains.get(p).aim;
     const hit = this.computeShot(p, aim, serving, d / p.d.reach);
+    hit.base = sh.hitId;
     this.applyHit(hit);
     this.net?.send({ k: "hit", ...hit });
   }
@@ -271,7 +274,8 @@ export class Match {
   applyHit(h) {
     const sh = this.shuttle, p = this.players.find((q) => q.id === h.by);
     sh.p = [...h.p]; sh.v = [...h.v]; sh.s = h.s; sh.t = h.t;
-    sh.flying = true; sh.lastTeam = h.team; sh.lastHitter = h.by; sh.hitId++; sh.netted = false;
+    sh.flying = true; sh.lastTeam = h.team; sh.lastHitter = h.by; sh.netted = false;
+    sh.hitId = (h.base ?? sh.hitId) + 1; this.lastHit = h;
     this.flightT = 0;
     if (this.state === "serve") { this.state = "rally"; this.stateT = 0; this.ui?.serve(false); if (this.server) this.server.locked = false; }
     this.stats.rally++;
@@ -280,7 +284,7 @@ export class Match {
     if (p) p.swing.hit = true;
     if (h.kind === "smash") {
       this.fx.emit(at, col, 90, 11, 0.8, 0, 3); this.fx.emit(at, "#ffffff", 30, 6, 0.4);
-      this.fx.ring(at, col, 4, 0.5, false); this.fx.shake(0.6); this.slowmo = 0.14;
+      this.fx.ring(at, col, 4, 0.5, false); this.fx.shake(0.6); if (!this.net) this.slowmo = 0.14;
       this.fx.setTrail(col, 1.2); sfx.smash();
       this.ui?.pop("SMASH!", col);
     } else {
@@ -289,6 +293,37 @@ export class Match {
       if (pw) { this.fx.ring(at, col, 2.2, 0.35, false); this.fx.shake(0.2); }
       this.fx.setTrail(col, pw * 0.6); sfx.hit(pw);
       if (h.kind === "drop") this.ui?.pop("DROP", col, true);
+    }
+  }
+
+  // ---------------------------------------------------------------- network
+  onNet(m) {
+    const sh = this.shuttle;
+    if (m.k === "st") {
+      for (const s of m.list || []) { const p = this.players.find((q) => q.id === s.id); if (p && p.kind === "remote") p.setRemote(s); }
+    } else if (m.k === "hit") {
+      if (this.state === "over") return;
+      // two teammates can hit the same flight at once: everyone keeps the hit from the lower id
+      const fresh = m.base === sh.hitId, clash = this.lastHit && m.base === this.lastHit.base && m.by < this.lastHit.by;
+      if (!fresh && !clash) return;
+      if (this.state === "point") return;
+      this.applyHit(m);
+      // catch up on the time the message spent in flight
+      const ff = Math.min(0.15, this.net.rtt * 0.75);
+      for (let t = 0; t < ff; t += PHYS.dt) this.stepShuttle(PHYS.dt);
+      this.flightT += ff;
+    } else if (m.k === "point" && !this.authority) {
+      this.score = m.score; this.serveTeam = m.serveTeam; this.serveIdx = m.serveIdx;
+      this.state = "rally"; this.onPoint(m.team, m.reason, m.at);
+    } else if (m.k === "serve" && !this.authority) {
+      this.score = m.score; this.serveTeam = m.serveTeam; this.serveIdx = m.serveIdx; this.setState("serve");
+    } else if (m.k === "over" && !this.authority) {
+      this.score = m.score; this.onOver(m.winner);
+    } else if (m.k === "leave" || m.k === "closed") {
+      const id = m.k === "closed" ? this.net.hostId : m.id;
+      if (id === this.net.hostId && !this.authority) { this.ui?.banner("HOST LEFT", "#ff7d9b", 3); this.state = "over"; setTimeout(() => this.opts.onEnd?.({ won: null, aborted: true, score: [...this.score], stats: { ...this.stats } }), 1500); return; }
+      const p = this.players.find((q) => q.id === id);
+      if (p && p.kind === "remote" && this.authority) { p.kind = "bot"; p.name += " (bot)"; this.brains.set(p, new BotBrain(this, p, 0.5)); this.ui?.pop("A player left — a bot takes over", "#ffd23d", true); }
     }
   }
 
