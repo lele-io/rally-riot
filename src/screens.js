@@ -7,14 +7,16 @@ import { HAIR, OUTFIT, HAT, FACE, EYES, BROWS, MOUTH, BUILD, EYEWEAR, NECK, WRIS
 
 export function panel(host, title, onClose, ...body) {
   const close = () => { wrap.remove(); removeEventListener("keydown", esc); onClose && onClose(); };
-  const esc = (e) => { if (e.code === "Escape") close(); };
+  // Esc calls api.close, so a wrapper the Game installs (restore the title buttons) also runs; it used to call the raw close
+  const esc = (e) => { if (e.code === "Escape") api.close(); };
   addEventListener("keydown", esc);
   const wrap = h("div", { class: "drawer" },
     h("div", { class: "card panel" },
       h("div", { class: "phead" }, h("h2", {}, title), h("button", { class: "x", onclick: () => { sfx.ui(); close(); } }, "✕")),
       h("div", { class: "pbody" }, ...body)));
   host.append(wrap);
-  return { close, wrap, body: wrap.querySelector(".pbody") };
+  const api = { close, wrap, body: wrap.querySelector(".pbody") };
+  return api;
 }
 
 export const rarityBadge = (r) => h("span", { class: "rbadge", style: `--rc:${RARITY[r].color}` }, RARITY[r].name);
@@ -79,8 +81,8 @@ export function openLoadout(host, lobby, onChange) {
     detail.innerHTML = "";
     detail.append(
       h("div", { class: "dhead" }, h("div", {}, h("div", { class: "dname", style: `color:${RARITY[r.rarity].color}` }, r.name), rarityBadge(r.rarity)),
-        sel === p.equipped ? h("span", { class: "chip" }, "EQUIPPED") : h("button", { class: "btn hot", onclick: () => { update((q) => (q.equipped = sel)); sfx.ui(); onChange && onChange(); drawGrid(); drawDetail(); } }, "EQUIP")),
-      h("div", { class: "muted", style: "margin:4px 0 10px;font-style:italic" }, r.blurb),
+        sel === p.equipped ? h("span", { class: "chip" }, "Equipped") : h("button", { class: "btn hot", onclick: () => { update((q) => (q.equipped = sel)); sfx.ui(); onChange && onChange(); drawGrid(); drawDetail(); } }, "Equip")),
+      h("div", { class: "muted", style: "margin:4px 0 10px;" }, r.blurb),
       statBars(sel, sel === p.equipped ? null : p.equipped));
     if (sel !== p.equipped) detail.append(h("div", { class: "muted", style: "font-size:12px;margin-top:6px" }, "Green/red numbers compare with your equipped racket."));
   };
@@ -97,9 +99,9 @@ export function openSummon(host, lobby, hud) {
     const p = profile();
     counts.innerHTML = "";
     counts.append(
-      h("button", { class: "btn cool", disabled: p.spins < 1, onclick: () => go(false, 1) }, h("div", {}, "SPIN"), h("small", {}, `uses 1 · you have ${p.spins}`)),
-      h("button", { class: "btn cool", disabled: p.spins < 10, onclick: () => go(false, 10) }, h("div", {}, "SPIN ×10"), h("small", {}, "uses 10")),
-      h("button", { class: "btn gold", disabled: p.lucky < 1, onclick: () => go(true, 1) }, h("div", {}, "LUCKY SPIN"), h("small", {}, `uses 1 · you have ${p.lucky}`)));
+      h("button", { class: "btn cool", disabled: p.spins < 1, onclick: () => go(false, 1) }, h("div", {}, "Spin"), h("small", {}, `Uses 1 · you have ${p.spins}`)),
+      h("button", { class: "btn cool", disabled: p.spins < 10, onclick: () => go(false, 10) }, h("div", {}, "10 spins"), h("small", {}, "Uses 10")),
+      h("button", { class: "btn gold", disabled: p.lucky < 1, onclick: () => go(true, 1) }, h("div", {}, "Lucky spin"), h("small", {}, `Uses 1 · you have ${p.lucky}`)));
   };
   const rates = h("table", { class: "rates" }, h("tr", {}, h("th", {}, "Rarity"), h("th", {}, "Spin"), h("th", {}, "Lucky")),
     ...RARITIES.map((r) => {
@@ -142,25 +144,25 @@ function reveal(host, lobby, results, done) {
   const summary = () => {
     box.innerHTML = "";
     box.append(h("div", { class: "card", style: "max-width:640px" }, h("h2", {}, "Summon results"),
-      h("div", { class: "rgrid" }, ...results.map(({ r, isNew }) => h("div", { class: "rcard", style: `--rc:${RARITY[r.rarity].color}` }, racketIcon(r), h("div", { class: "rn" }, r.name), isNew ? h("div", { class: "new" }, "NEW") : null))),
-      h("div", { class: "row", style: "margin-top:12px" }, h("button", { class: "btn hot", onclick: finish }, "DONE"))));
+      h("div", { class: "rgrid" }, ...results.map(({ r, isNew }) => h("div", { class: "rcard", style: `--rc:${RARITY[r.rarity].color}` }, racketIcon(r), h("div", { class: "rn" }, r.name), isNew ? h("div", { class: "new" }, "New") : null))),
+      h("div", { class: "row", style: "margin-top:12px" }, h("button", { class: "btn hot", onclick: finish }, "Done"))));
   };
   const next = () => {
     if (i >= results.length) return results.length > 1 ? summary() : finish();
     const { r, isNew, refund } = results[i++];
     box.innerHTML = "";
-    const skip = results.length > 1 ? h("button", { class: "btn", onclick: () => { lobby.endSummon(); summary(); } }, "SKIP") : null;
+    const skip = results.length > 1 ? h("button", { class: "btn", onclick: () => { lobby.endSummon(); summary(); } }, "Skip") : null;
     box.append(h("div", { class: "row", style: "position:absolute;bottom:24px;left:0;right:0" }, skip));
     lobby.playSummon(r, () => {
       sfx.summon(RARITY[r.rarity].tier);
       box.innerHTML = "";
       box.append(h("div", { class: "revealcard", style: `--rc:${RARITY[r.rarity].color}` },
         rarityBadge(r.rarity),
-        h("div", { class: "dname" }, r.name), isNew ? h("div", { class: "new big" }, "NEW!") : h("div", { class: "muted" }, `Duplicate · +${refund} Yen`),
+        h("div", { class: "dname" }, r.name), isNew ? h("div", { class: "new big" }, "New racket") : h("div", { class: "muted" }, `Duplicate · +${refund} Yen`),
         statBars(r.id),
         h("div", { class: "row", style: "margin-top:12px" },
-          h("button", { class: "btn hot", onclick: next }, i < results.length ? `NEXT (${i}/${results.length})` : "CONTINUE"),
-          skip && i < results.length ? h("button", { class: "btn", onclick: () => { lobby.endSummon(); summary(); } }, "SKIP") : null)));
+          h("button", { class: "btn hot", onclick: next }, i < results.length ? `Next ${i}/${results.length}` : "Continue"),
+          skip && i < results.length ? h("button", { class: "btn", onclick: () => { lobby.endSummon(); summary(); } }, "Skip") : null)));
     });
   };
   next();
@@ -179,7 +181,7 @@ export function openPlay(host, start, extraTabs = []) {
   const casual = h("div", { class: "col", style: "align-items:flex-start;gap:12px" },
     h("div", { class: "lbl" }, "Mode"), seg([["1v1", 1], ["2v2", 2], ["3v3", 3]], () => size, (v) => (size = v)),
     h("div", { class: "lbl" }, "Bot skill"), seg([["Easy", 0.2], ["Normal", 0.3], ["Hard", 0.85]], () => level, (v) => { level = v; update((q) => (q.settings.bot = v)); }),
-    h("button", { class: "btn hot", style: "margin-top:6px;font-size:20px;padding:14px 34px", onclick: () => start({ type: "casual", size, level }) }, "START"));
+    h("button", { class: "btn hot", style: "margin-top:6px;font-size:20px;padding:14px 34px", onclick: () => start({ type: "casual", size, level }) }, "Start"));
   const tabs = [["Casual", casual], ...extraTabs];
   const body = h("div", {});
   const bar = h("div", { class: "tabs" });
@@ -225,8 +227,8 @@ export function openCustomize(host, lobby, onChange) {
   }
   draw();
   const tools = h("div", { class: "row", style: "justify-content:flex-start;margin-top:14px" },
-    h("button", { class: "btn cool", onclick: () => { look = normalizeLook(randomLook()); sfx.summon(1); commit(); draw(); } }, "RANDOMIZE"),
-    h("button", { class: "btn", onclick: () => { look = { ...DEFAULT_LOOK }; sfx.ui(); commit(); draw(); } }, "RESET"));
+    h("button", { class: "btn cool", onclick: () => { look = normalizeLook(randomLook()); sfx.summon(1); commit(); draw(); } }, "Randomize"),
+    h("button", { class: "btn", onclick: () => { look = { ...DEFAULT_LOOK }; sfx.ui(); commit(); draw(); } }, "Reset"));
   lobby.closeup = true;
   const pn = panel(host, "Customize", () => { lobby.closeup = false; }, bar, body, tools,
     h("div", { class: "muted", style: "font-size:12px;margin-top:10px" }, "Your look is saved automatically and shows up in online matches too. The Team Scarf and the ring under your feet show your team color."));

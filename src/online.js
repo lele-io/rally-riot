@@ -17,7 +17,7 @@ export function privateTab(game) {
   box.append(
     h("div", { class: "muted" }, "Play with friends: create a room and share its code."),
     h("div", { class: "row", style: "justify-content:flex-start" },
-      h("button", { class: "btn hot", onclick: () => room(game, box, makeCode(), true) }, "CREATE ROOM"),
+      h("button", { class: "btn hot", onclick: () => room(game, box, makeCode(), true) }, "Create room"),
       code, h("button", { class: "btn cool", onclick: () => code.value.trim() && room(game, box, code.value.trim().toUpperCase(), false) }, "JOIN")));
   return box;
 }
@@ -35,8 +35,8 @@ async function room(game, box, code, isHost) {
   const list = h("div", { class: "col", style: "gap:6px" }), info = h("div", { class: "muted" });
   const sizeSeg = h("div", { class: "seg" });
   const drawSize = () => { sizeSeg.innerHTML = ""; for (const n of [1, 2, 3]) sizeSeg.append(h("button", { class: n === size ? "on" : "", onclick: () => { size = n; drawSize(); } }, `${n}v${n}`)); };
-  const start = h("button", { class: "btn hot", onclick: () => go() }, "START");
-  const leave = h("button", { class: "btn", onclick: () => { conn.close(); box.replaceWith(privateTab(game)); } }, "LEAVE");
+  const start = h("button", { class: "btn hot", onclick: () => go() }, "Start");
+  const leave = h("button", { class: "btn", onclick: () => { conn.close(); box.replaceWith(privateTab(game)); } }, "Leave");
   box.append(h("div", { class: "roomcode" }, "ROOM ", h("b", {}, code)), list, info,
     isHost ? h("div", { class: "row", style: "justify-content:flex-start" }, sizeSeg, start, leave) : h("div", { class: "row" }, leave));
   drawSize();
@@ -82,7 +82,7 @@ export function startOnline(game, { conn, me, hostId, size, roster, points }) {
     kind: p.id === me ? "local" : p.bot && isHost ? "bot" : "remote", level: 0.45,
   }));
   const meP = roster.find((p) => p.id === me);
-  const tn = (t) => (size === 1 ? roster.find((p) => p.team === t)?.name : t === meP.team ? "YOUR TEAM" : "RIVALS");
+  const tn = (t) => (size === 1 ? roster.find((p) => p.team === t)?.name : t === meP.team ? "Your team" : "Rivals");
   game.startMatch({ type: "online", size, players, localId: me, names: [tn(0), tn(1)], points, net, isHost, online: { conn, me, hostId, size, roster, points } });
 }
 
@@ -99,8 +99,8 @@ export function rematchBox(game, cfg) {
       const roster = o.roster.map((p) => (net.left.has(p.id) && !p.bot ? { ...p, bot: true, name: p.name + " (bot)" } : p));
       const msg = { k: "start", size: o.size, roster, host: o.me, points: o.points };
       conn.send(msg); begin(msg);
-    } else { conn.send({ k: "again", name: profile().name }, o.hostId); btn.disabled = true; btn.textContent = "WAITING FOR HOST…"; }
-  } }, isHost ? "REMATCH" : "ASK FOR REMATCH");
+    } else { conn.send({ k: "again", name: profile().name }, o.hostId); btn.disabled = true; btn.textContent = "Waiting for the host"; }
+  } }, isHost ? "Rematch" : "Ask for a rematch");
   const off = conn.on((m) => {
     if (m.k === "again" && isHost) { voters.add(m.name); wants.textContent = [...voters].join(", ") + (voters.size > 1 ? " want" : " wants") + " a rematch!"; sfx.ui(); }
     if (m.k === "start" && !isHost) begin(m);

@@ -17,6 +17,7 @@ import { RACKET, randomRacket } from "./rackets.js";
 import { profile, update } from "./save.js";
 import { audioUnlock, sfx } from "./sfx.js";
 import { privateTab, rematchBox } from "./online.js";
+import { iconEl } from "./icons.js";
 import { ACTIONS, binds, setBind, resetBinds, keyName } from "./keybinds.js";
 import { openShop, matchRewards } from "./economy.js";
 
@@ -38,16 +39,6 @@ const GradeShader = {
     }`,
 };
 
-const ICON = {
-  play: `<svg viewBox="0 0 24 24"><path d="M7 4.5v15l12.5-7.5z" fill="currentColor"/></svg>`,
-  friends: `<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.6" fill="currentColor"/><circle cx="17" cy="9" r="2.8" fill="currentColor"/><path d="M2.5 20c0-4 3-6.5 6.5-6.5s6.5 2.5 6.5 6.5zM15.5 20c0-2.4-.8-4.3-2.2-5.6 1-.6 2.2-.9 3.4-.9 3 0 5 2.2 5 6.5z" fill="currentColor"/></svg>`,
-  shop: `<svg viewBox="0 0 24 24"><path d="M3 4h3l2.2 10.5h10.3L21 7H7.2" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><circle cx="9.5" cy="19" r="1.8" fill="currentColor"/><circle cx="17" cy="19" r="1.8" fill="currentColor"/></svg>`,
-  summon: `<svg viewBox="0 0 24 24"><path d="M12 2l2.4 6.6L21 11l-6.6 2.4L12 20l-2.4-6.6L3 11l6.6-2.4z" fill="currentColor"/></svg>`,
-  loadout: `<svg viewBox="0 0 24 24"><ellipse cx="10" cy="9" rx="5.5" ry="6.5" transform="rotate(-35 10 9)" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M14 14l6.5 6.5" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>`,
-  custom: `<svg viewBox="0 0 24 24"><circle cx="12" cy="7.5" r="4.5" fill="currentColor"/><path d="M3.5 21c.6-5 4.2-7.5 8.5-7.5s7.9 2.5 8.5 7.5z" fill="currentColor"/><path d="M16 2.5l1 2 2 .3-1.5 1.4.4 2-1.9-1-1.9 1 .4-2L13 4.8l2-.3z" fill="#fff" stroke="currentColor" stroke-width=".6"/></svg>`,
-  help: `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9.3 9.2a2.8 2.8 0 1 1 3.9 2.6c-.8.4-1.2 1-1.2 1.9v.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17.3" r="1.2" fill="currentColor"/></svg>`,
-};
-const icon = (k) => { const s = h("span", { class: "ico" }); s.innerHTML = ICON[k]; return s; };
 
 class Game {
   async start() {
@@ -103,7 +94,7 @@ class Game {
     if (this.view) { this.view.update(dt); this.composer.render(); }
   }
 
-  clearUI() { this.ui.innerHTML = ""; this.ui.classList.remove("cine", "panel-open"); }
+  clearUI() { this.ui.innerHTML = ""; this.ui.classList.remove("cine", "panel-open", "ending"); }
 
   toast(text) {
     const t = h("div", { class: "toast" }, text); document.body.append(t);
@@ -117,23 +108,23 @@ class Game {
     this.lobby = lobby;
     this.setView(lobby);
     this.topbar = h("div", { class: "topbar" });
-    const big = (cls, ic, label, id) => h("button", { class: "tbtn " + cls, onclick: () => { sfx.ui(); this.openMenu(id); } }, h("span", { class: "tin" }, icon(ic), label));
-    const small = (cls, ic, label, id) => h("button", { class: "sbtn " + cls, onclick: () => { sfx.ui(); this.openMenu(id); } }, h("span", { class: "tin" }, icon(ic), label));
+    const big = (cls, ic, label, id) => h("button", { class: "tbtn " + cls, onclick: () => { sfx.ui(); this.openMenu(id); } }, h("span", { class: "tin" }, iconEl(ic), label));
+    const small = (cls, ic, label, id) => h("button", { class: "sbtn " + cls, onclick: () => { sfx.ui(); this.openMenu(id); } }, h("span", { class: "tin" }, iconEl(ic), label));
     this.ui.append(
       this.topbar,
       h("div", { class: "title" },
         h("div", { class: "logo big" }, h("span", { class: "l1" }, "RALLY"), h("span", { class: "l2" }, "RIOT")),
         h("div", { class: "tbtns" },
-          big("go", "play", "PLAY", "play"),
-          big("friends", "friends", "PLAY WITH FRIENDS", "friends"),
+          big("go", "play", "Play", "play"),
+          big("friends", "friends", "Play with friends", "friends"),
           h("div", { class: "howlinks" },
-            h("button", { class: "howto", onclick: () => { sfx.ui(); this.openMenu("howto"); } }, icon("help"), h("u", {}, "How to play")),
-            h("button", { class: "howto", style: "margin-left:0", onclick: () => { sfx.ui(); this.openMenu("controls"); } }, icon("loadout"), h("u", {}, "Controls"))))),
+            h("button", { class: "howto", onclick: () => { sfx.ui(); this.openMenu("howto"); } }, iconEl("help"), h("u", {}, "How to play")),
+            h("button", { class: "howto", onclick: () => { sfx.ui(); this.openMenu("controls"); } }, iconEl("keyboard"), h("u", {}, "Controls"))))),
       h("div", { class: "bottombar" },
-        small("shop", "shop", "SHOP", "shop"),
-        small("summon", "summon", "SUMMON", "summon"),
-        small("loadout", "loadout", "LOADOUT", "loadout"),
-        small("custom", "custom", "CUSTOMIZE", "customize")));
+        small("shop", "shop", "Shop", "shop"),
+        small("summon", "summon", "Summon", "summon"),
+        small("loadout", "loadout", "Loadout", "loadout"),
+        small("custom", "custom", "Customize", "customize")));
     this.drawTopbar();
   }
 
@@ -143,12 +134,13 @@ class Game {
     const name = h("input", { class: "name", value: p.name, maxlength: 16, title: "Your name — click to change",
       onchange: (e) => update((q) => (q.name = e.target.value.trim().slice(0, 16) || q.name)) });
     this.topbar.innerHTML = "";
-    this.topbar.append(
+    // one player card: you, your racket, then your currencies
+    this.topbar.append(h("div", { class: "pcard" },
+      h("div", { class: "me" }, racketIcon(r), h("div", {}, name, h("div", { class: "eqr" }, r.name, rarityBadge(r.rarity)))),
       h("div", { class: "wallet" },
-        h("span", { class: "cur yen", title: "Yen" }, "¥ ", h("b", {}, p.yen.toLocaleString())),
-        h("span", { class: "cur spin", title: "Spins" }, "✦ ", h("b", {}, p.spins)),
-        h("span", { class: "cur lucky", title: "Lucky Spins" }, "❖ ", h("b", {}, p.lucky))),
-      h("div", { class: "me" }, racketIcon(r), h("div", {}, name, h("div", { class: "eqr" }, r.name, " ", rarityBadge(r.rarity)))));
+        h("span", { class: "cur yen", title: "Yen" }, h("span", { class: "yen-mark" }, "¥"), h("b", {}, p.yen.toLocaleString())),
+        h("span", { class: "cur spin", title: "Spins" }, iconEl("shuttle"), h("b", {}, p.spins), "spins"),
+        h("span", { class: "cur lucky", title: "Lucky spins" }, iconEl("clover"), h("b", {}, p.lucky), "lucky"))));
   }
 
   openMenu(id) {
@@ -185,7 +177,7 @@ class Game {
     const p = profile();
     this.clearUI(); this.lobby = null; this.menu = null; this.topbar = null;
     const players = cfg.players || [{ id: "me", name: p.name, team: 0, racket: p.equipped, kind: "local", look: this.look() }, ...this.botPlayers(cfg.size, cfg.level, cfg.size - 1)];
-    const names = cfg.names || (cfg.size === 1 ? [p.name, players[1].name] : ["YOUR TEAM", "RIVALS"]);
+    const names = cfg.names || (cfg.size === 1 ? [p.name, players[1].name] : ["Your team", "Rivals"]);
     const localTeam = players.find((q) => q.id === (cfg.localId || "me"))?.team || 0;
     const hud = new MatchHUD(this.ui, names, localTeam === 1);
     const m = new Match(this, {
@@ -212,16 +204,18 @@ class Game {
     const won = r.won;
     if (!r.aborted) update((q) => { q.stats.matches++; if (won) q.stats.wins++; q.stats.smashes += r.stats.smashes; });
     const reward = matchRewards(r, cfg);
+    this.ui.classList.add("ending");   // the match HUD fades out behind the result
+    const stat = (label, v) => h("div", {}, h("span", {}, label), h("b", {}, String(v)));
     this.ui.append(h("div", { class: "screen dim end" },
-      h("div", { class: "card col", style: "min-width:340px;align-items:center" },
-        h("div", { class: "big " + (r.aborted ? "" : won ? "win" : "lose") }, r.aborted ? "MATCH ENDED" : won ? "VICTORY" : "DEFEAT"),
-        h("div", { class: "final" }, `${r.score[0]} — ${r.score[1]}`),
-        h("div", { class: "chips" }, h("span", { class: "chip" }, `Hits ${r.stats.hits}`), h("span", { class: "chip" }, `Smashes ${r.stats.smashes}`), h("span", { class: "chip" }, `Longest rally ${r.stats.longest}`)),
+      h("div", { class: "card" },
+        h("div", { class: "big " + (r.aborted ? "" : won ? "win" : "lose") }, r.aborted ? "Match ended" : won ? "Victory" : "Defeat"),
+        h("div", { class: "final" }, `${r.score[0]} – ${r.score[1]}`),
+        h("div", { class: "endstats" }, stat("Hits", r.stats.hits), stat("Smashes", r.stats.smashes), stat("Longest rally", r.stats.longest)),
         reward,
         cfg.type === "online" && !r.aborted ? rematchBox(this, cfg) : null,
         h("div", { class: "row" },
-          cfg.type === "casual" ? h("button", { class: "btn hot", onclick: () => this.startMatch(cfg) }, "PLAY AGAIN") : null,
-          h("button", { class: "btn", onclick: () => { cfg.net?.close?.(); this.goTitle(); } }, "MENU")))));
+          cfg.type === "casual" ? h("button", { class: "btn hot", onclick: () => this.startMatch(cfg) }, "Play again") : null,
+          h("button", { class: "btn", onclick: () => { cfg.net?.close?.(); this.goTitle(); } }, "Menu")))));
   }
 }
 
@@ -253,7 +247,7 @@ function controls(input) {
   return h("div", { class: "col", style: "gap:12px" },
     h("div", { class: "muted" }, "Click a box, then press a key or mouse button. Esc cancels. Taken keys swap."),
     grid,
-    h("div", { class: "row", style: "justify-content:flex-start" }, h("button", { class: "btn", onclick: () => { resetBinds(); sfx.ui(); draw(); } }, "RESET TO DEFAULTS")),
+    h("div", { class: "row", style: "justify-content:flex-start" }, h("button", { class: "btn", onclick: () => { resetBinds(); sfx.ui(); draw(); } }, "Reset to defaults")),
     h("div", { class: "muted", style: "font-size:12px" }, "Mouse look and wheel zoom are fixed."));
 }
 

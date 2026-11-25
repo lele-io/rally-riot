@@ -25,12 +25,12 @@ export class MatchHUD {
       h("div", { class: "banner" }), h("div", { class: "pops" }),
       h("div", { class: "servehint" }), h("div", { class: "crosshair" }), h("div", { class: "lockbadge" }, "Click to grab the camera"),
       h("div", { class: "meters" },
-        h("div", { class: "meter charge" }, h("i"), h("span", {}, "POWER")),
-        h("div", { class: "meter dash" }, h("i"), h("span", {}, "DASH  " + keyName(binds().dash)))),
+        h("div", { class: "meter charge" }, h("i"), h("span", {}, "Power")),
+        h("div", { class: "meter dash" }, h("i"), h("span", {}, "Dash", h("kbd", {}, keyName(binds().dash))))),
       h("div", { class: "offarrow" }, h("span", { class: "tip" }), h("b", {})),
       h("div", { class: "keys" }, keyHint()));
     // leave-match button (click twice); the Game wires it up with onMenu()
-    this.menuBtn = h("button", { class: "menubtn", title: "Back to the menu" }, "☰ MENU");
+    this.menuBtn = h("button", { class: "menubtn", title: "Back to the menu" }, "Menu");
     this.root.append(this.menuBtn);
     if (flip) this.root.classList.add("flip");
     root.append(this.root);
@@ -54,7 +54,7 @@ export class MatchHUD {
   }
   serve(mine, name) {
     const s = $(".servehint", this.root);
-    s.textContent = mine ? "YOUR SERVE — aim with the mouse, click to serve" : mine === false && name ? `${name} to serve…` : "";
+    s.textContent = mine ? "Your serve · aim with the mouse and click" : mine === false && name ? `${name} to serve…` : "";
     s.style.opacity = mine || name ? 1 : 0;
   }
   hud(p) {
@@ -73,12 +73,12 @@ export class MatchHUD {
   }
   onMenu(fn) {
     let armed = 0;
-    const label = () => "☰ MENU  " + keyName(binds().menu);
+    const label = () => "Menu · " + keyName(binds().menu);
     this.menuBtn.textContent = label();
     this.menuBtn.onclick = (e) => {
       e.stopPropagation();
       if (armed) { clearTimeout(armed); fn(); return; }
-      this.menuBtn.textContent = "LEAVE MATCH? CLICK AGAIN"; this.menuBtn.classList.add("armed");
+      this.menuBtn.textContent = "Leave the match? Click again"; this.menuBtn.classList.add("armed");
       armed = setTimeout(() => { armed = 0; this.menuBtn.textContent = label(); this.menuBtn.classList.remove("armed"); }, 2500);
     };
   }
