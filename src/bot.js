@@ -6,9 +6,10 @@ import { simulate, COURT } from "./shuttle.js";
 //   err: placement error scale   hunt: how hard it aims for open space (null = 0.4 + level)
 //   shot / loft / pull: non-smash shot speed, chance of a lofted shot, pull of the aim toward the receiver
 //   smashSpeed / smashPull: smash speed factor, smash aim pull toward the receiver   pace: whole-match shuttle pace   rackets: max rarity tier
+//   smashD: [reaction factor, chance] smash defense on that share of incoming smashes: faster reaction + swing assist (Normal only)
 export const TIERS = {
   easy:   { react: [0.42, 0.2], smash: 0.05, err: 1.1, hunt: 0.1, shot: 0.78, loft: 0.85, pull: 0.5, smashSpeed: 0.86, smashPull: 0.65, pace: 0.85, rackets: 1 },
-  normal: { react: [0.42, 0.2], smash: 0.2, err: 0.8, hunt: 0.25, shot: 0.82, loft: 0.75, pull: 0.35, smashSpeed: 0.91, smashPull: 0.4, pace: 0.93, rackets: 3 },
+  normal: { react: [0.42, 0.2], smash: 0.2, err: 0.8, hunt: 0.25, shot: 0.82, loft: 0.75, pull: 0.35, smashSpeed: 0.91, smashPull: 0.4, pace: 0.93, rackets: 3, smashD: [0.45, 0.55] },
   hard:   { react: [0.42, 0.32], smash: 0.2, err: 0.5, hunt: null, shot: 0.86, loft: 0.6, pull: 0.2, smashSpeed: 0.91, smashPull: 0.4, pace: 1, rackets: 3 },
   expert: { react: [0.42, 0.32], smash: null, err: 0.35, hunt: null, shot: 1, loft: 0, pull: 0, smashSpeed: 0.96, smashPull: 0, pace: 1, rackets: 5, steady: true },
 };
@@ -30,7 +31,7 @@ export class BotBrain {
 
   think(dt) {
     const m = this.m, p = this.p, sh = m.shuttle;
-    const inp = { mx: 0, mz: 0, jump: false, dash: false, swing: false, aim: this.aim };
+    const inp = { mx: 0, mz: 0, jump: false, dash: false, swing: false, aim: this.aim, assist: !!this.vsSmash };
     const home = m.homeFor(p);
     let goal = { x: home[0], z: home[1] }, urgent = false;
 
@@ -44,7 +45,9 @@ export class BotBrain {
 
     if (m.state === "rally" && sh.flying && sh.lastTeam !== p.team) {
       if (sh.hitId !== this.lastHitSeen) {
-        this.lastHitSeen = sh.hitId; this.plan = null; this.replanT = this.react; this.pickAim(false);
+        // smash defense (tier.smashD): react faster to an incoming smash and let the swing fire when it reaches the racket
+        this.vsSmash = m.lastHit?.kind === "smash" && !!this.tier.smashD && Math.random() < this.tier.smashD[1];   // only on some smashes
+        this.lastHitSeen = sh.hitId; this.plan = null; this.replanT = this.react * (this.vsSmash ? this.tier.smashD[0] : 1); this.pickAim(false);
         this.smashRoll = Math.random() < this.smashChance; // decided once per incoming shot (was re-rolled every tick)
         this.power = this.level < 0.3 ? Math.random() * 0.35 : this.tier.steady ? 0.42 + 0.08 * Math.random() : 0.3 + 0.7 * Math.random() * this.level; // non-smash charge
       }
