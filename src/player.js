@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { makeAvatar, makeRacket } from "./assets.js";
 import { racketStats, derive } from "./rackets.js";
+import { Rig, poseAthlete } from "./anim.js";
 
 const GRAV = 24;            // player gravity (snappier than the shuttle)
 const CAP_HALF = 0.5, CAP_R = 0.32, CAP_Y = CAP_HALF + CAP_R; // capsule centre height above feet
@@ -11,6 +12,9 @@ const TAP = 0.14;           // presses shorter than this are plain (uncharged) s
 const ARM_IDLE = 5.35, ARM_BACK = 2.55, ARM_FOLLOW = 6.15;
 
 export const TEAM_COLORS = ["#3d8bff", "#ff4d6d"];
+
+// racket in the HandR bone: the bone's +Y runs from the wrist to the fingertips, so the handle simply continues the arm
+export function mountRacket(r) { r.rotation.set(0, Math.PI / 2, 0); r.position.set(0, 0.02, 0.0); r.scale.setScalar(1.3); return r; }
 
 export class Player {
   constructor(match, { id, name, team, racket = "practice", kind = "local", slot = 0, look = null }) {
@@ -37,10 +41,7 @@ export class Player {
     this.root = new THREE.Group();
     this.avatar = makeAvatar(look, TEAM_COLORS[team]);
     this.root.add(this.avatar);
-    this.arm = this.avatar.getObjectByName("ArmR");
-    this.armL = this.avatar.getObjectByName("ArmL");
-    this.legs = [this.avatar.getObjectByName("LegL"), this.avatar.getObjectByName("LegR")];
-    this.feet = [this.avatar.getObjectByName("FootL"), this.avatar.getObjectByName("FootR")];
+    this.rig = new Rig(this.avatar);          // skeleton: arms/forearms/hands, legs/shins/feet, spine (anim.js)
     this.hand = this.avatar.getObjectByName("HandR");
     this.attachRacket();
     // team ring on the floor (the scarf is optional now, so this is what always shows the team)
@@ -58,9 +59,7 @@ export class Player {
   attachRacket() {
     if (this.racketObj) this.hand.remove(this.racketObj);
     this.racketObj = makeRacket(this.racketId);
-    this.racketObj.rotation.x = Math.PI; // handle continues the arm
-    this.racketObj.position.y = 0.06;
-    this.racketObj.scale.setScalar(1.55);
+    mountRacket(this.racketObj);
     this.hand.add(this.racketObj);
     this.accent = this.racketObj.userData.accent;
   }
@@ -178,24 +177,17 @@ export class Player {
     this.teamRing.position.y = 0.072 - p.y; // stays on the floor while jumping
     this.root.rotation.y = Math.atan2(this.facing.x, this.facing.z);
     const speed = Math.hypot(this.pos.x - this.prevPos.x, this.pos.z - this.prevPos.z) / (1 / 60);
-    this.animT += dt * (4 + speed * 1.6);
-    const run = Math.min(1, speed / 6) * (this.onGround ? 1 : 0.2);
-    const sw = Math.sin(this.animT * 1.2) * 0.7 * run;
-    if (this.legs[0]) { this.legs[0].rotation.x = sw; this.legs[1].rotation.x = -sw; }
-    if (this.feet[0]) { this.feet[0].position.z = sw * 0.12; this.feet[1].position.z = -sw * 0.12; }
-    this.avatar.position.y = this.onGround ? Math.abs(Math.sin(this.animT * 1.2)) * 0.06 * run : 0;
-    this.avatar.rotation.x = this.dashT > 0 ? 0.35 : run * 0.12;
-    if (this.armL) this.armL.rotation.x = -sw * 0.8 + (this.swing.st === "charge" ? -0.9 : 0);
+    this.animT += dt * (3 + speed * 1.5);
+    const run = Math.min(1, speed / 6) * (this.onGround ? 1 : 0.3);
 
-    // racket arm
+    // racket arm angle about the shoulder (same convention as before: negative = forward)
     const s = this.swing;
     let target = ARM_IDLE, k = 14;
     if (s.st === "charge") { target = ARM_IDLE + (ARM_BACK - ARM_IDLE) * Math.min(1, s.t / 0.12 + s.charge * 0.3); k = 18; }
     else if (s.st === "swing") { target = ARM_FOLLOW; k = 45; }
     else if (s.st === "recover") { target = ARM_IDLE; k = 10; }
     this.armA += (target - this.armA) * Math.min(1, k * dt);
-    this.arm.rotation.x = this.armA;
-    this.arm.rotation.z = s.st === "charge" ? -0.25 : 0;
+    poseAthlete(this.rig, { run, phase: this.animT * 1.2, air: !this.onGround, dash: this.dashT > 0, swing: s.st, charge: s.charge, armA: this.armA - Math.PI * 2 });
     const m = this.racketObj.userData.accentMat;
     if (m) m.emissiveIntensity = 2.2 + (s.st === "charge" ? s.charge * 10 * (0.8 + 0.2 * Math.sin(this.animT * 8)) : 0);
   }

@@ -226,6 +226,7 @@ def jitter(obj, amt, seed=1, zmin=-1e9):
 # Lives in avatar.py (skin-modifier limbs, lofted garments, swept hair clumps, face strokes): build_avatar(), build_avatar_parts(),
 # preview_avatar(...) / preview_grid([...]) for review shots. (The old primitive version also overwrote the racket HEAD_Z global.)
 exec(open(r"C:/games/racket-game/blender/avatar.py", encoding="utf-8").read())
+exec(open(r"C:/games/racket-game/blender/avatar_rig.py", encoding="utf-8").read())   # rigged anime avatar (uses avatar.py parts)
 
 
 # ---------------------------------------------------------------- shared environment pieces
@@ -465,5 +466,5 @@ exec(open(r"C:/games/racket-game/blender/lobby.py", encoding="utf-8").read())
 
 def build_all():
     os.makedirs(OUT, exist_ok=True)
-    for f in (build_racket_round, build_racket_blade, build_racket_wing, build_shuttle, build_avatar, build_avatar_parts, build_court, build_backdrop, build_lobby):
+    for f in (build_racket_round, build_racket_blade, build_racket_wing, build_shuttle, build_avatar_rig, build_court, build_backdrop, build_lobby):
         f()

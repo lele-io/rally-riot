@@ -3,7 +3,8 @@ import { getModel, makeAvatar, makeRacket } from "./assets.js";
 import { FX } from "./fx.js";
 import { buildEnv } from "./env.js";
 import { RARITY } from "./rackets.js";
-import { TEAM_COLORS } from "./player.js";
+import { TEAM_COLORS, mountRacket } from "./player.js";
+import { Rig, poseAthlete } from "./anim.js";
 
 // Title-screen backdrop: the shrine island at golden hour with your character posing on the right
 // (holding the equipped racket). The summon cutscene plays at the shrine. Menus are DOM (main.js / screens.js).
@@ -37,18 +38,28 @@ export class Lobby {
     if (old) { this.scene.remove(old); if (this.racket) this.hand.remove(this.racket); }
     this.avatar = makeAvatar(look, TEAM_COLORS[0]); this.scene.add(this.avatar);
     this.avatar.position.set(1.6, 0, 3.2); this.avatar.rotation.y = old ? old.rotation.y : -0.35;
-    const prevR = this.armR?.rotation.x ?? 3.9, prevL = this.armL?.rotation.x ?? 0;
-    this.armR = this.avatar.getObjectByName("ArmR"); this.armL = this.avatar.getObjectByName("ArmL");
-    // keep the pose across rebuilds (changing a look used to drop the racket and swing it back up)
-    this.armR.rotation.x = prevR; this.armL.rotation.x = prevL;
+    // the pose is computed from time alone, so a rebuilt avatar continues the same pose (no racket drop on look changes)
+    this.rig = new Rig(this.avatar);
+    this.poseNow();
     this.hand = this.avatar.getObjectByName("HandR");
     this.racket = null; this.setRacket(this.racketId || this.game.equipped());
+  }
+
+  // idle "ready" stance: racket raised beside the head, weight on the back foot, gentle breathing sway
+  poseNow() {
+    const t = this.time || 0;
+    poseAthlete(this.rig, { run: 0, phase: 0, air: false, dash: false, swing: "idle", charge: 0, armA: -2.35 + Math.sin(t * 1.3) * 0.06 });
+    this.rig.set("ForearmR", -1.25 + Math.sin(t * 1.3) * 0.05); this.rig.set("HandR", -0.3);
+    this.rig.set("ArmL", -0.25, 0, 0.18); this.rig.set("ForearmL", -0.5);
+    this.rig.set("Spine", 0, -0.15 + Math.sin(t * 0.9) * 0.03, 0); this.rig.set("Head", 0, 0.2, 0);
+    this.rig.set("LegL", -0.08, 0, 0.06); this.rig.set("LegR", 0.06, 0, -0.06); this.rig.set("ShinL", 0.1); this.rig.set("ShinR", 0.08);
+    this.rig.bob(Math.sin(t * 1.6) * 0.008);
   }
 
   setRacket(id) {
     this.racketId = id;
     if (this.racket) this.hand.remove(this.racket);
-    this.racket = makeRacket(id); this.racket.rotation.x = Math.PI; this.racket.position.y = 0.06; this.racket.scale.setScalar(1.55);
+    this.racket = mountRacket(makeRacket(id));
     this.hand.add(this.racket);
   }
 
@@ -57,7 +68,7 @@ export class Lobby {
     const wide = innerWidth / innerHeight > 1.1;
     let want, look;
     if (this.summonSeq) { const w = wide ? 2.2 : 0; want = new THREE.Vector3(w, 3.3, 2.4); look = new THREE.Vector3(w * 0.55, 3.0, -7); }
-    else if (this.closeup) { const w = wide ? -1.1 : 0; want = new THREE.Vector3(1.6 + w, 1.55, 6.6); look = new THREE.Vector3(1.6 + w, 1.05, 3.2); }
+    else if (this.closeup) { const w = wide ? -1.1 : 0; want = new THREE.Vector3(1.6 + w, 1.75, 6.9); look = new THREE.Vector3(1.6 + w, 1.25, 3.2); }
     else if (wide) { want = new THREE.Vector3(-0.4, 2.1, 9.4); look = new THREE.Vector3(-0.9, 1.9, 0); }
     else { want = new THREE.Vector3(1.6, 1.8, 8.6); look = new THREE.Vector3(1.6, 1.4, 0); }
     if (snap) { this.camPos.copy(want); this.camLook.copy(look); }
@@ -70,9 +81,7 @@ export class Lobby {
     // idle: breathe and gently sway the racket (the periodic "show-off" swing slammed the racket down: removed)
     const a = this.avatar, t = this.time;
     a.position.y = Math.abs(Math.sin(t * 1.6)) * 0.02;
-    const armT = 3.9 + Math.sin(t * 1.3) * 0.08;
-    this.armR.rotation.x += (armT - this.armR.rotation.x) * Math.min(1, dt * 6);
-    this.armL.rotation.x = Math.sin(t * 1.3) * 0.1;
+    this.poseNow();
     a.rotation.y = -0.35 + Math.sin(t * 0.5) * 0.08;
 
     this.crystal.rotation.y += dt * (this.summonSeq ? 8 : 0.8);
