@@ -13,7 +13,7 @@ import { Lobby } from "./lobby.js";
 import { MatchHUD, h } from "./ui.js";
 import { openLoadout, openSummon, openPlay, openCustomize, panel, racketIcon, rarityBadge } from "./screens.js";
 import { normalizeLook, randomLook } from "./looks.js";
-import { RACKET, randomRacket } from "./rackets.js";
+import { RACKET, RACKETS, randomRacket } from "./rackets.js";
 import { profile, update } from "./save.js";
 import { audioUnlock, sfx } from "./sfx.js";
 import { privateTab, rematchBox } from "./online.js";
@@ -174,10 +174,14 @@ class Game {
   // ---------------------------------------------------------------- matches
   botPlayers(size, level, myTeamBots) {
     const names = [...BOT_NAMES].sort(() => Math.random() - 0.5);
-    const tier = level < 0.3 ? 1 : level < 0.7 ? 3 : 5;
+    // Normal bots carry a racket of the same rarity as yours (rackets set move / shot speed, so this keeps them at parity);
+    // Easy bots get Commons/Uncommons, Hard bots anything up to Mythical
+    const mine = RACKET[profile().equipped] || RACKET.practice;
+    const same = RACKETS.filter((r) => r.rarity === mine.rarity);
+    const pickRacket = () => level < 0.3 ? randomRacket(1) : level < 0.7 ? same[Math.floor(Math.random() * same.length)].id : randomRacket(5);
     const out = [];
-    for (let i = 0; i < myTeamBots; i++) out.push({ id: "bt" + i, name: names.pop(), team: 0, racket: randomRacket(tier), kind: "bot", level, look: randomLook() });
-    for (let i = 0; i < size; i++) out.push({ id: "bo" + i, name: names.pop(), team: 1, racket: randomRacket(tier), kind: "bot", level, look: randomLook() });
+    for (let i = 0; i < myTeamBots; i++) out.push({ id: "bt" + i, name: names.pop(), team: 0, racket: pickRacket(), kind: "bot", level, look: randomLook() });
+    for (let i = 0; i < size; i++) out.push({ id: "bo" + i, name: names.pop(), team: 1, racket: pickRacket(), kind: "bot", level, look: randomLook() });
     return out;
   }
 

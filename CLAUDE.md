@@ -46,7 +46,8 @@ Do NOT modify `lele-io/cupidium-relay` or `lele-io/one-in-a-cupidium`.
   Hits use a swept test over the last tick (`closestOnPath`) and `reachFor` (+45% reach vs fast shots, so smashes are returnable).
   Bot skill comes from `opts.players[i].level` (Player itself doesn't store it). White ring under the shuttle; HUD arrow when off-screen.
   Landing marker: `applyHit` simulates the flight (deterministic) into `this.landing`; opponents' shots show a ring there (red =
-  smash). Bot smashes: 0.86/0.91/0.96x speed by skill, and Easy/Normal aim partly at the receiver.
+  smash). Bots: Normal/Hard have player-identical movement and shot/smash speed (difficulty = decisions only: reaction,
+  placement error, smash frequency, Easy/Normal smash partly at the receiver); Easy also moves at 0.8x and smashes at 0.86x.
   Team 0 plays x<0, team 1 x>0; the orbit camera starts behind the local player facing the net.
   `authority` (offline or host) decides points; `net` hooks send hit/point/serve/over.
 - `lobby.js` title-screen backdrop (Lobby view): shrine island, your avatar posing on the right, summon cutscene
