@@ -459,6 +459,10 @@ def build_lobby():
     finish("lobby", s)
 
 
+# the title-screen island lives in lobby.py (overrides build_lobby above)
+exec(open(r"C:/games/racket-game/blender/lobby.py", encoding="utf-8").read())
+
+
 def build_all():
     os.makedirs(OUT, exist_ok=True)
     for f in (build_racket_round, build_racket_blade, build_racket_wing, build_shuttle, build_avatar, build_avatar_parts, build_court, build_backdrop, build_lobby):

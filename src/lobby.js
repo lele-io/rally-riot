@@ -16,6 +16,7 @@ export class Lobby {
     this.env = buildEnv(this.scene, { shadowSize: 16, sunDir: new THREE.Vector3(0.6, 0.45, 0.65) });
     const lobby = getModel("lobby"); this.scene.add(lobby);
     this.crystal = lobby.getObjectByName("Crystal");
+    this.crystalY = this.crystal.position.y; // bob around its own height (it used to be pinned to the floor)
     lobby.traverse((o) => { if (o.isMesh && o.material.name === "Portal") { o.material = o.material.clone(); this.portalMat = o.material; } });
     // a soft glowing pane inside the shrine ring
     this.pane = new THREE.Mesh(new THREE.CircleGeometry(1.5, 40), new THREE.MeshBasicMaterial({ color: IDLE_PORTAL, transparent: true, opacity: 0.25, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
@@ -79,7 +80,7 @@ export class Lobby {
     a.rotation.y = -0.35 + Math.sin(t * 0.5) * 0.08;
 
     this.crystal.rotation.y += dt * (this.summonSeq ? 8 : 0.8);
-    this.crystal.position.y = Math.sin(t * 1.6) * 0.12;
+    this.crystal.position.y = this.crystalY + Math.sin(t * 1.6) * 0.12;
     if (this.summonSeq) this.updateSummon(dt);
     else {
       this.portalMat.emissive.lerp(IDLE_PORTAL, dt * 2); this.glow.color.copy(this.portalMat.emissive);

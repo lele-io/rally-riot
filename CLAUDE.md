@@ -12,7 +12,11 @@ Do NOT modify `lele-io/cupidium-relay` or `lele-io/one-in-a-cupidium`.
   Builds each model in a scratch scene and deletes it; never touches the user's own scene.
   Characters live in `blender/avatar.py` (exec'd by build_models): `skin_limb` (Skin-modifier arms/legs), `loft_profile`
   (garments/hats from ring profiles), `make_hair_lock` (flat swept hair clumps), face strokes. Review with
-  `preview_grid([(outfit, hair, hat, face), ...])` → scene "avatar_preview" (delete it after). ~36k tris per character.
+  `preview_grid([dict(outfit=..., hair=..., eyes=..., hat=...), ...])` → scene "avatar_preview" (delete it after).
+  Parts roots: outfit_/hair_/eyes_/brows_/mouth_/face_ (marks)/hat_/eyewear_/neck_/wrist_. Nodes named *_ArmL/_ArmR/_LegL/_LegR are
+  re-parented onto that limb by makeAvatar (shorts legs, jogger cuffs, wristbands). Arm/leg materials are zoned
+  (Sleeve/Sleeve2/Skin, Legs/Legs2) and colored per outfit via `OUTFIT_FIT` in looks.js; Build = runtime limb/torso scale.
+  Title island lives in `blender/lobby.py` (overrides build_lobby; keeps `Crystal` + `Portal` material at the shrine (0, 7, 3.2)).
 
 ## Code map (src/)
 - `shuttle.js` pure flight model (gravity, quadratic drag, sidespin/topspin Magnus) + `solveShot` (aims a shot at a court
@@ -26,8 +30,8 @@ Do NOT modify `lele-io/cupidium-relay` or `lele-io/one-in-a-cupidium`.
   cursor, click re-locks; falls back to normal clicks if lock is refused), crosshair aim (`CROSSHAIR_Y` in match.js must match
   CSS `.crosshair` top), click swing/hold charge (charges whenever held and the racket is ready), Space jump, Shift dash, wheel zoom.
 - Customization: `looks.js` (options/palettes/`normalizeLook`/`randomLook`), `assets.makeAvatar(look, teamColor)` clones the base
-  avatar.glb + parts from avatar_parts.glb (roots `outfit_*`, `hair_*`, `hat_*`, `face_*`) and recolors materials Skin/Hair/Eye/
-  Outfit1/Outfit2/HatMain/HatBand/Legs/Sleeve/Team. Saved as `profile.look`; sent in online room "hi"/roster. Bots get random looks.
+  avatar.glb + parts from avatar_parts.glb (slots above) and recolors materials Skin/Hair/Eye/
+  Outfit1/Outfit2/HatMain/HatBand/Legs/Legs2/Sleeve/Sleeve2/Cuff/Team. Team color also shows as a floor ring under each player. Saved as `profile.look`; sent in online room "hi"/roster. Bots get random looks.
   No named presets of other studios' characters (owner can build look-alikes from generic parts).
 - `player.js` kinematic capsule + Rapier character controller; swing state idle→charge→swing(0.17s window)→recover; a tap is
   edge-detected and buffered 0.3 s through the recovery; holding auto-releases when the shuttle reaches the racket
