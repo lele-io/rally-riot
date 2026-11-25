@@ -9,7 +9,7 @@ export class BotBrain {
     // difficulty knobs. Easy (0.2) reacts late, moves at ~80% speed, rarely dashes or jumps, and almost never smashes.
     this.react = 0.42 - 0.32 * level;
     this.speedMul = Math.min(1, 0.72 + 0.4 * level);
-    this.smashChance = level < 0.3 ? 0.08 : Math.min(0.92, level * 1.05);
+    this.smashChance = level < 0.3 ? 0.05 : level < 0.7 ? 0.2 : Math.min(0.92, level * 1.05);   // Easy 5%, Normal 20%, Hard ~90%
     this.dashes = level >= 0.3;
   }
 

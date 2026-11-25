@@ -330,7 +330,22 @@ export class Match {
       for (const q of this.players) if (q.team !== p.team) { const d = Math.hypot(q.pos.x - tx, q.pos.z - tz); if (d < nd) { nd = d; near = q; } }
       if (near && pull) { tx += (near.pos.x - tx) * pull; tz += (near.pos.z - tz) * pull; tx = Math.sign(tx || ox) * Math.max(3, Math.abs(tx)); }
     }
-    const sol = solveShot(from, [tx, tz], speed, spin, top, smash ? { clear: 0.1, maxApex: from[1] + 0.6 } : { clear: 0.3 });
+    // Easy matches run at a slower pace for everyone (opts.pace), and Easy / Normal bots hit softer, higher, more central shots
+    speed *= this.opts.pace ?? 1;
+    let preferHigh = false;
+    if (p.kind === "bot" && !smash && !serving) {
+      const lv = this.brains.get(p)?.level ?? 0.5;
+      if (lv < 0.7) {
+        const easy = lv < 0.3;
+        speed *= easy ? 0.78 : 0.86;
+        preferHigh = Math.random() < (easy ? 0.85 : 0.6);            // lofted shots hang in the air: time to get there
+        let near = null, nd = 1e9;
+        for (const q of this.players) if (q.team !== p.team) { const d = Math.hypot(q.pos.x - tx, q.pos.z - tz); if (d < nd) { nd = d; near = q; } }
+        const pull = easy ? 0.5 : 0.2;
+        if (near) { tx += (near.pos.x - tx) * pull; tz += (near.pos.z - tz) * pull; tx = Math.sign(tx || ox) * Math.max(0.9, Math.abs(tx)); }
+      }
+    }
+    const sol = solveShot(from, [tx, tz], speed, spin, top, smash ? { clear: 0.1, maxApex: from[1] + 0.6 } : { clear: 0.3, preferHigh });
     return { by: p.id, team: p.team, p: from, v: sol.v, s: spin * Math.sqrt(sol.speedFrac || 1), t: top, kind: smash ? "smash" : drop ? "drop" : c > 0.4 ? "power" : serving ? "serve" : "hit", c, seq: ++this.hitSeq };
   }
 
@@ -435,7 +450,7 @@ export class Match {
 
     // landing marker for shots coming at the local player's side
     {
-      const Lp = this.local, ld = this.landing, show = !!(Lp && ld && sh.flying && this.state === "rally" && ld.team !== Lp.team && ld.id === sh.hitId);
+      const Lp = this.local, ld = this.landing, show = !!(Lp && ld && ld.smash && sh.flying && this.state === "rally" && ld.team !== Lp.team && ld.id === sh.hitId);   // smashes only
       this.landMark.visible = show;
       if (show) {
         const left = Math.max(0, ld.t - this.flightT), k = 1 - left / Math.max(0.05, ld.t);

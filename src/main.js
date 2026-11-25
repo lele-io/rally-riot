@@ -190,7 +190,7 @@ class Game {
     const hud = new MatchHUD(this.ui, names, localTeam === 1);
     const m = new Match(this, {
       teamSize: cfg.size, localId: cfg.localId || "me", pointsToWin: cfg.points || (cfg.size === 1 ? 11 : 15), ui: hud, players,
-      net: cfg.net, isHost: cfg.isHost,
+      net: cfg.net, isHost: cfg.isHost, pace: !cfg.net && cfg.level != null && cfg.level < 0.3 ? 0.85 : 1,   // Easy: the whole game is a bit slower
       onEnd: (r) => setTimeout(() => this.endScreen(r, cfg), 1200),
     });
     const d = m.dispose.bind(m); m.dispose = () => { hud.dispose(); d(); };
