@@ -47,12 +47,13 @@ export class Lobby {
 
   // idle "ready" stance: racket raised beside the head, weight on the back foot, gentle breathing sway
   poseNow() {
-    const t = this.time || 0;
-    poseAthlete(this.rig, { run: 0, phase: 0, air: false, dash: false, swing: "idle", charge: 0, armA: -2.35 + Math.sin(t * 1.3) * 0.06 });
-    this.rig.set("ForearmR", -1.25 + Math.sin(t * 1.3) * 0.05); this.rig.set("HandR", -0.3);
-    this.rig.set("ArmL", -0.25, 0, 0.18); this.rig.set("ForearmL", -0.5);
-    this.rig.set("Spine", 0, -0.15 + Math.sin(t * 0.9) * 0.03, 0); this.rig.set("Head", 0, 0.2, 0);
-    this.rig.set("LegL", -0.08, 0, 0.06); this.rig.set("LegR", 0.06, 0, -0.06); this.rig.set("ShinL", 0.1); this.rig.set("ShinR", 0.08);
+    // ready stance: racket held up beside the body (strings facing the camera), knees soft, a little breathing sway
+    const t = this.time || 0, br = Math.sin(t * 1.3);
+    poseAthlete(this.rig, { run: 0, phase: 0, air: false, dash: false, swing: "idle", charge: 0, armA: -0.55 + br * 0.04 });
+    this.rig.set("ArmR", -0.55 + br * 0.04, 0, -0.35); this.rig.set("ForearmR", -1.35 + br * 0.05); this.rig.set("HandR", -0.25, 0, 0);
+    this.rig.set("ArmL", -0.2, 0, 0.22); this.rig.set("ForearmL", -0.55);
+    this.rig.set("Spine", 0, -0.12 + Math.sin(t * 0.9) * 0.03, 0); this.rig.set("Head", 0.04, 0.18, 0);
+    this.rig.set("LegL", -0.08, 0, 0.07); this.rig.set("LegR", 0.06, 0, -0.07); this.rig.set("ShinL", 0.12); this.rig.set("ShinR", 0.1);
     this.rig.bob(Math.sin(t * 1.6) * 0.008);
   }
 
@@ -68,7 +69,7 @@ export class Lobby {
     const wide = innerWidth / innerHeight > 1.1;
     let want, look;
     if (this.summonSeq) { const w = wide ? 2.2 : 0; want = new THREE.Vector3(w, 3.3, 2.4); look = new THREE.Vector3(w * 0.55, 3.0, -7); }
-    else if (this.closeup) { const w = wide ? -1.1 : 0; want = new THREE.Vector3(1.6 + w, 1.75, 6.9); look = new THREE.Vector3(1.6 + w, 1.25, 3.2); }
+    else if (this.closeup) { const w = wide ? -1.1 : 0; want = new THREE.Vector3(1.6 + w, 1.6, 6.7); look = new THREE.Vector3(1.6 + w, 1.05, 3.2); }
     else if (wide) { want = new THREE.Vector3(-0.4, 2.1, 9.4); look = new THREE.Vector3(-0.9, 1.9, 0); }
     else { want = new THREE.Vector3(1.6, 1.8, 8.6); look = new THREE.Vector3(1.6, 1.4, 0); }
     if (snap) { this.camPos.copy(want); this.camLook.copy(look); }

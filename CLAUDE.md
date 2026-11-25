@@ -10,6 +10,8 @@ Do NOT modify `lele-io/cupidium-relay` or `lele-io/one-in-a-cupidium`.
 - Models: run `blender/build_models.py` inside Blender (MCP `execute_blender_code`):
   `exec(open(r"C:/games/racket-game/blender/build_models.py").read()); build_all()` → writes `public/models/*.glb`.
   Builds each model in a scratch scene and deletes it; never touches the user's own scene.
+  Style: DESIGNER TOY (owner's pick: vinyl-figure look, ~2.5 heads, 1.62 m). `blender/avatar_toy.py` overrides avatar_rig's
+  proportions/body/bones/shoes and the hair builder (sculpted chunk hair); garments are fitted radially to the toy body profile.
   Characters: `blender/avatar_rig.py` builds ONE `avatar.glb` = armature "Rig" (Hips Spine Chest Neck Head, Arm/Forearm/Hand,
   Leg/Shin/Foot + L/R) + skinned anime-proportion body + every part variant named `<slot>_<id>__<piece>` (base pieces `base__*`).
   Part shapes come from the v3 builders in `blender/avatar.py` (loft_profile, make_hair_lock, skin_limb...), warped onto the new

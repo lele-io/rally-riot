@@ -227,6 +227,7 @@ def jitter(obj, amt, seed=1, zmin=-1e9):
 # preview_avatar(...) / preview_grid([...]) for review shots. (The old primitive version also overwrote the racket HEAD_Z global.)
 exec(open(r"C:/games/racket-game/blender/avatar.py", encoding="utf-8").read())
 exec(open(r"C:/games/racket-game/blender/avatar_rig.py", encoding="utf-8").read())   # rigged anime avatar (uses avatar.py parts)
+exec(open(r"C:/games/racket-game/blender/avatar_toy.py", encoding="utf-8").read())   # designer-toy style: overrides the rig proportions + hair
 
 
 # ---------------------------------------------------------------- shared environment pieces

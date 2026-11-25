@@ -19,6 +19,7 @@ OLD_HEAD = Vector((0, 0, 1.38))               # chibi head centre (avatar.py H)
 # garment warp: chibi height -> anime height (piecewise linear between body landmarks)
 ZMAP = [(-1.0, -1.0), (0.0, 0.0), (0.13, 0.12), (0.29, 0.5), (0.5, 0.92), (0.62, 1.12), (0.84, 1.3), (0.99, 1.42), (1.075, 1.5), (1.25, 1.62)]
 SX_TORSO, SX_LEGS = 0.72, 0.82                # width scale for torso / leg regions (lerped by height)
+WRIST_BAND = (0.925, 0.219, 0.036)            # wristband: bottom z, x, radius (just above the wrist)
 HIP_X = 0.086                                 # leg sockets (= chibi 0.105 * SX_LEGS so warped shorts legs line up)
 
 # body skeleton graph: name -> (position, (rx, ry)); edges below. x mirrored for L (+x) / R (-x)
@@ -241,7 +242,8 @@ def build_avatar_rig(export=True, only=None, name="avatar"):
         if only and only.get("wrist") != k: continue
         for s_, n in ((1, "L"), (-1, "R")):
             if k == "band" and n == "L": continue
-            c = loft_profile("Wristband", [(0.925, 0.036, 0.036, s_ * 0.219, 0), (0.975, 0.04, 0.04, s_ * 0.218, 0)], segs=18, mat=M["hatb"], solidify=0.012, subsurf=1,
+            zb, xb, rb = WRIST_BAND
+            c = loft_profile("Wristband", [(zb, rb, rb, s_ * xb, 0), (zb + 0.05, rb * 1.1, rb * 1.1, s_ * xb, 0)], segs=18, mat=M["hatb"], solidify=0.012, subsurf=1,
                              shape=lambda t, a: (1 + 0.012 * math.sin(a * 24), 0))
             apply_mods(c); c.name = f"wrist_{k}__Band{n}"; rig_bind(c, rig, group="Forearm" + n)
     bpy.data.objects.remove(old_head, do_unlink=True)

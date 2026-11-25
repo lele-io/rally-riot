@@ -620,8 +620,8 @@ def wave_hem(n=5, amp=0.04, dz=0.02, folds=0.02):
 def athletic_shorts(M, o, main="o2", trim="o1"):
     """sports shorts: waist + two leg openings. The leg tubes are named *_LegL / *_LegR so the game parents them to the legs."""
     # sits low on the hips, under the shirt hem (the waistband only shows with tucked / short tops)
-    o.append(loft_profile("Shorts", [(0.6, 0.158, 0.12), (0.54, 0.19, 0.145), (0.5, 0.205, 0.155), (0.46, 0.205, 0.155)], segs=28, mat=M[main], subsurf=1))
-    o.append(loft_profile("Waistband", [(0.57, 0.168, 0.128), (0.605, 0.162, 0.124)], segs=28, mat=M[trim], solidify=0.012, subsurf=1))
+    o.append(loft_profile("Shorts", [(0.6, 0.15, 0.114), (0.54, 0.168, 0.128), (0.5, 0.188, 0.142), (0.46, 0.2, 0.152)], segs=28, mat=M[main], subsurf=1))
+    o.append(loft_profile("Waistband", [(0.57, 0.156, 0.118), (0.6, 0.152, 0.115)], segs=28, mat=M[trim], solidify=0.01, subsurf=1))
     for sx, nm in ((-1, "R"), (1, "L")):
         x = sx * HIP[0]
         o.append(loft_profile("ShortsLeg_Leg" + nm, [(0.53, 0.112, 0.112, x, 0), (0.42, 0.113, 0.111, x, 0.0), (0.34, 0.119, 0.116, x, 0.004)],
@@ -657,7 +657,7 @@ def build_outfit(M, kind):
         o.append(ico_s("Clasp", 1, (0, -0.135, 1.03), M["gold"], 2, scale=(0.038, 0.016, 0.038)))
         o.append(ico_s("ClaspGem", 1, (0, -0.15, 1.03), M["hatb"], 2, scale=(0.017, 0.01, 0.017)))
     elif kind in ("tee", "polo"):
-        sr = [(z, rx * 1.06, ry * 1.08) for z, rx, ry in TORSO if 0.52 <= z <= 1.035]
+        sr = [(z, rx * 1.09, ry * 1.1) for z, rx, ry in TORSO if 0.52 <= z <= 1.035]
         sr = [(0.44, 0.226, 0.176)] + sr          # untucked: the hem drapes over the shorts
         o.append(loft_profile("Shirt", sr, segs=28, mat=M["o1"], subsurf=1, shape=lambda t, a: (1 + 0.012 * (1 - t) * math.sin(a * 7), 0)))
         if kind == "tee":
