@@ -29,6 +29,9 @@ export class MatchHUD {
         h("div", { class: "meter dash" }, h("i"), h("span", {}, "DASH  " + keyName(binds().dash)))),
       h("div", { class: "offarrow" }, h("span", { class: "tip" }), h("b", {})),
       h("div", { class: "keys" }, keyHint()));
+    // leave-match button (click twice); the Game wires it up with onMenu()
+    this.menuBtn = h("button", { class: "menubtn", title: "Back to the menu" }, "☰ MENU");
+    this.root.append(this.menuBtn);
     if (flip) this.root.classList.add("flip");
     root.append(this.root);
     this.bannerT = null;
@@ -68,6 +71,17 @@ export class MatchHUD {
     a.firstChild.style.transform = `rotate(${-ang}rad)`;
     a.lastChild.textContent = height > 0.5 ? height.toFixed(0) + "m" : "";
   }
+  onMenu(fn) {
+    let armed = 0;
+    const label = () => "☰ MENU  " + keyName(binds().menu);
+    this.menuBtn.textContent = label();
+    this.menuBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (armed) { clearTimeout(armed); fn(); return; }
+      this.menuBtn.textContent = "LEAVE MATCH? CLICK AGAIN"; this.menuBtn.classList.add("armed");
+      armed = setTimeout(() => { armed = 0; this.menuBtn.textContent = label(); this.menuBtn.classList.remove("armed"); }, 2500);
+    };
+  }
   lockState(on) { this.root.classList.toggle("unlocked", !on); }
   dispose() { this.root.remove(); }
 }
@@ -75,5 +89,5 @@ export class MatchHUD {
 function keyHint() {
   const b = binds(), mv = [b.forward, b.left, b.back, b.right].map(keyName);
   const wasd = mv.every((k) => k.length === 1) ? mv.join("") : mv.join(" ");
-  return `${wasd} move · Mouse look + aim · ${keyName(b.swing)} swing (hold = power) · ${keyName(b.jump)} jump · ${keyName(b.dash)} dash · Wheel zoom · Hold ${keyName(b.cursor)} for cursor`;
+  return `${wasd} move · Mouse look + aim · ${keyName(b.swing)} swing (hold = power) · ${keyName(b.jump)} jump · ${keyName(b.dash)} dash · Wheel zoom · Hold ${keyName(b.cursor)} for cursor · ${keyName(b.menu)} menu`;
 }

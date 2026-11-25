@@ -194,8 +194,18 @@ class Game {
       onEnd: (r) => setTimeout(() => this.endScreen(r, cfg), 1200),
     });
     const d = m.dispose.bind(m); m.dispose = () => { hud.dispose(); d(); };
+    this.matchCfg = cfg;
+    hud.onMenu(() => this.quitMatch());
     this.setView(m);
     return m;
+  }
+
+  // leave a match early (menu key / HUD button): no rewards; online, this closes our connection like the end screen does
+  quitMatch() {
+    const cfg = this.matchCfg; this.matchCfg = null;
+    if (this.view?.state) this.view.state = "over";
+    cfg?.net?.close?.();
+    this.goTitle();
   }
 
   endScreen(r, cfg) {

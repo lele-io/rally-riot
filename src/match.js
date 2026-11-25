@@ -7,6 +7,8 @@ import { buildEnv } from "./env.js";
 import { sfx } from "./sfx.js";
 import { COURT, PHYS, step, solveShot, simulate } from "./shuttle.js";
 import { RACKET } from "./rackets.js";
+import { binds, keyName } from "./keybinds.js";
+const keyNameOf = (a) => keyName(binds()[a]);
 
 const TICK = 1 / 60;
 const CROSSHAIR_Y = 0.18; // NDC height of the crosshair (CSS .crosshair top = 41%)
@@ -156,6 +158,7 @@ export class Match {
       else if (p.kind === "remote") p.tickRemote(dt);
       if (inp) p.update(dt, inp);
     }
+    if (this.local && input.actPressed("menu")) this.requestLeave();
     input.endTick();
     this.world.step();
 
@@ -238,6 +241,14 @@ export class Match {
     this.game.input.setWantLock(false); // free the cursor for the end screen
     const won = this.local ? w === this.local.team : null;
     this.opts.onEnd?.({ won, winner: w, score: [...this.score], myPoints: this.local ? this.score[this.local.team] : 0, stats: { ...this.stats } });
+  }
+
+  // menu key: press once to arm, again within 2.5 s to leave (a stray keypress mid-rally doesn't end your match)
+  requestLeave() {
+    // (quit after this frame: we're inside tick(), and quitting frees the physics world we're still stepping)
+    if (this.leaveArmedAt != null && this.time - this.leaveArmedAt < 2.5) { this.leaveArmedAt = null; setTimeout(() => this.game.quitMatch(), 0); return; }
+    this.leaveArmedAt = this.time;
+    this.ui?.pop("Press " + keyNameOf("menu") + " again to leave", "#ffd23d", true);
   }
 
   // ---------------------------------------------------------------- hits

@@ -4,9 +4,9 @@ import { profile, update } from "./save.js";
 
 export const ACTIONS = [
   ["forward", "Move forward"], ["back", "Move back"], ["left", "Move left"], ["right", "Move right"],
-  ["swing", "Swing (hold = power)"], ["jump", "Jump"], ["dash", "Dash"], ["cursor", "Hold to free the cursor"],
+  ["swing", "Swing (hold = power)"], ["jump", "Jump"], ["dash", "Dash"], ["cursor", "Hold to free the cursor"], ["menu", "Back to menu (press twice)"],
 ];
-export const DEFAULT_BINDS = { forward: "KeyW", back: "KeyS", left: "KeyA", right: "KeyD", swing: "Mouse0", jump: "Space", dash: "ShiftLeft", cursor: "AltLeft" };
+export const DEFAULT_BINDS = { forward: "KeyW", back: "KeyS", left: "KeyA", right: "KeyD", swing: "Mouse0", jump: "Space", dash: "ShiftLeft", cursor: "AltLeft", menu: "KeyM" };
 
 export function binds() {
   const k = profile().settings?.keys || {};

@@ -221,3 +221,9 @@ details summary { cursor: pointer; margin-top: 10px; font-weight: 800; color: va
 @keyframes pulse { to { transform: scale(1.06); } }
 .howlinks { display: flex; gap: 18px; justify-content: center; }
 .wants { color: var(--gold); font-weight: 800; min-height: 1.2em; }
+
+/* in-match menu button (top-left; hold the cursor key to click it while the camera is locked) */
+.hud .menubtn { pointer-events: auto; position: absolute; top: 18px; left: 18px; font: 15px "Lilita One"; letter-spacing: .02em; color: var(--ink);
+  background: var(--paper); border: 3px solid var(--ink); border-radius: 12px; padding: 6px 14px; box-shadow: 0 3px 0 var(--ink); cursor: pointer; }
+.hud .menubtn:hover { background: var(--sun); }
+.hud .menubtn.armed { background: var(--coral); color: #fff; }
