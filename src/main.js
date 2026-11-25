@@ -18,6 +18,7 @@ import { profile, update } from "./save.js";
 import { audioUnlock, sfx } from "./sfx.js";
 import { privateTab, rematchBox } from "./online.js";
 import { iconEl } from "./icons.js";
+import { tierFor } from "./bot.js";
 import { ACTIONS, binds, setBind, resetBinds, keyName } from "./keybinds.js";
 import { openShop, matchRewards } from "./economy.js";
 
@@ -166,7 +167,7 @@ class Game {
   // ---------------------------------------------------------------- matches
   botPlayers(size, level, myTeamBots) {
     const names = [...BOT_NAMES].sort(() => Math.random() - 0.5);
-    const tier = level < 0.3 ? 1 : level < 0.7 ? 3 : 5;
+    const tier = tierFor(level).rackets;
     const out = [];
     for (let i = 0; i < myTeamBots; i++) out.push({ id: "bt" + i, name: names.pop(), team: 0, racket: randomRacket(tier), kind: "bot", level, look: randomLook() });
     for (let i = 0; i < size; i++) out.push({ id: "bo" + i, name: names.pop(), team: 1, racket: randomRacket(tier), kind: "bot", level, look: randomLook() });
@@ -182,7 +183,7 @@ class Game {
     const hud = new MatchHUD(this.ui, names, localTeam === 1);
     const m = new Match(this, {
       teamSize: cfg.size, localId: cfg.localId || "me", pointsToWin: cfg.points || (cfg.size === 1 ? 11 : 15), ui: hud, players,
-      net: cfg.net, isHost: cfg.isHost, pace: cfg.net || cfg.level == null ? 1 : cfg.level < 0.3 ? 0.85 : cfg.level < 0.7 ? 0.93 : 1,   // Easy / Normal: the whole game is a bit slower
+      net: cfg.net, isHost: cfg.isHost, pace: cfg.net || cfg.level == null ? 1 : tierFor(cfg.level).pace,   // Easy / Normal: the whole game is a bit slower
       onEnd: (r) => setTimeout(() => this.endScreen(r, cfg), 1200),
     });
     const d = m.dispose.bind(m); m.dispose = () => { hud.dispose(); d(); };

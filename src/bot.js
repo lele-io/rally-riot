@@ -1,15 +1,30 @@
 import { simulate, COURT } from "./shuttle.js";
 
-// level 0 (easy) .. 1 (hard)
+// Difficulty tiers by skill level: Easy 0.2, Normal 0.3, Hard 0.4 (the earlier Normal), Expert 0.85 (the earlier Hard, made consistent:
+// same speed and reactions, but steady placement, aim and drive power instead of random swings in quality — `steady`).
+//   react: [base, slope] -> reaction delay = base - slope * level     smash: chance to smash a high ball (null = from level)
+//   err: placement error scale   hunt: how hard it aims for open space (null = 0.4 + level)
+//   shot / loft / pull: non-smash shot speed, chance of a lofted shot, pull of the aim toward the receiver
+//   smashSpeed / smashPull: smash speed factor, smash aim pull toward the receiver   pace: whole-match shuttle pace   rackets: max rarity tier
+export const TIERS = {
+  easy:   { react: [0.42, 0.2], smash: 0.05, err: 1.1, hunt: 0.1, shot: 0.78, loft: 0.85, pull: 0.5, smashSpeed: 0.86, smashPull: 0.65, pace: 0.85, rackets: 1 },
+  normal: { react: [0.42, 0.2], smash: 0.2, err: 0.8, hunt: 0.25, shot: 0.82, loft: 0.75, pull: 0.35, smashSpeed: 0.91, smashPull: 0.4, pace: 0.93, rackets: 3 },
+  hard:   { react: [0.42, 0.32], smash: 0.2, err: 0.5, hunt: null, shot: 0.86, loft: 0.6, pull: 0.2, smashSpeed: 0.91, smashPull: 0.4, pace: 1, rackets: 3 },
+  expert: { react: [0.42, 0.32], smash: null, err: 0.35, hunt: null, shot: 1, loft: 0, pull: 0, smashSpeed: 0.96, smashPull: 0, pace: 1, rackets: 5, steady: true },
+};
+export const tierOf = (level) => (level < 0.25 ? "easy" : level < 0.35 ? "normal" : level < 0.7 ? "hard" : "expert");
+export const tierFor = (level) => TIERS[tierOf(level)];
+
 export class BotBrain {
   constructor(match, player, level = 0.5) {
     this.m = match; this.p = player; this.level = level;
     this.plan = null; this.replanT = 0; this.serveT = 0; this.held = 0; this.wantSmash = false;
     this.aim = [0, 0]; this.lastHitSeen = -1;
     // difficulty knobs. Easy (0.2) reacts late, moves at ~80% speed, rarely dashes or jumps, and almost never smashes.
-    this.react = level < 0.7 ? 0.42 - 0.2 * level : 0.42 - 0.32 * level;   // Easy 0.38 s, Normal 0.36 s, Hard 0.15 s
+    const T = (this.tier = tierFor(level));
+    this.react = T.react[0] - T.react[1] * level;   // Easy 0.38 s, Normal 0.36 s, Hard 0.29 s, Expert 0.15 s
     this.speedMul = Math.min(1, 0.72 + 0.4 * level);
-    this.smashChance = level < 0.3 ? 0.05 : level < 0.7 ? 0.2 : Math.min(0.92, level * 1.05);   // Easy 5%, Normal 20%, Hard ~90%
+    this.smashChance = T.smash ?? Math.min(0.92, level * 1.05);   // Easy 5%, Normal / Hard 20%, Expert ~90%
     this.dashes = level >= 0.3;
   }
 
@@ -31,7 +46,7 @@ export class BotBrain {
       if (sh.hitId !== this.lastHitSeen) {
         this.lastHitSeen = sh.hitId; this.plan = null; this.replanT = this.react; this.pickAim(false);
         this.smashRoll = Math.random() < this.smashChance; // decided once per incoming shot (was re-rolled every tick)
-        this.power = this.level < 0.3 ? Math.random() * 0.35 : 0.3 + 0.7 * Math.random() * this.level; // non-smash charge
+        this.power = this.level < 0.3 ? Math.random() * 0.35 : this.tier.steady ? 0.42 + 0.08 * Math.random() : 0.3 + 0.7 * Math.random() * this.level; // non-smash charge
       }
       this.replanT -= dt;
       if (this.replanT <= 0) { this.plan = this.intercept(); this.replanT = 0.12; }
@@ -114,7 +129,7 @@ export class BotBrain {
     let pl = best || last;
     if (!pl) return null;
     // weaker bots misjudge a bit
-    const err = (1 - this.level) * (this.level < 0.3 ? 1.1 : this.level < 0.7 ? 0.8 : 0.5);
+    const err = (1 - this.level) * this.tier.err;
     return { ...pl, x: pl.x + (Math.random() - 0.5) * err, z: pl.z + (Math.random() - 0.5) * err };
   }
 
@@ -126,7 +141,7 @@ export class BotBrain {
       const depth = serve ? 5 + Math.random() * 3.2 : 1.6 + Math.random() * (L - 2.1);
       const x = ox * depth, z = (Math.random() * 2 - 1) * (W - 0.6);
       let dmin = 99; for (const q of opp) dmin = Math.min(dmin, Math.hypot(q.pos.x - x, q.pos.z - z));
-      const score = dmin * (this.level < 0.3 ? 0.1 : this.level < 0.7 ? 0.25 : 0.4 + this.level) + Math.random() * 2.5; // Easy / Normal barely hunt open space
+      const score = dmin * (this.tier.hunt ?? 0.4 + this.level) + Math.random() * (this.tier.steady ? 1.0 : 2.5); // Easy / Normal barely hunt open space; Expert picks steadily
       if (!best || score > best.s) best = { x, z, s: score };
     }
     const e = (1 - this.level) * 1.4; // sloppy bots sometimes hit long or wide

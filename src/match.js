@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { getModel } from "./assets.js";
 import { Player } from "./player.js";
-import { BotBrain } from "./bot.js";
+import { BotBrain, tierFor } from "./bot.js";
 import { FX } from "./fx.js";
 import { buildEnv } from "./env.js";
 import { sfx } from "./sfx.js";
@@ -315,7 +315,7 @@ export class Match {
     // overall pace is ~10% slower than before, and a full smash tops out near 30 m/s (was ~40) so it can be returned
     let speed = 0.9 * p.d.shot * (1 + 0.62 * c) * (smash ? 1.06 : 1) * (drop ? 0.72 : 1) * (serving ? 0.9 : 1);
     // bot smashes are a touch slower than a player's (Easy 0.86, Normal 0.91, Hard 0.96) so they stay returnable
-    if (smash && p.kind === "bot") { const lv = this.brains.get(p)?.level ?? 0.5; speed *= lv < 0.3 ? 0.86 : lv < 0.7 ? 0.91 : 0.96; }
+    if (smash && p.kind === "bot") speed *= tierFor(this.brains.get(p)?.level ?? 0.5).smashSpeed;
     const lateral = tz - from[2];
     const sideSign = Math.sign(lateral * ox) || (Math.random() < 0.5 ? 1 : -1);
     const spin = serving ? 0 : -sideSign * p.d.spin * (0.35 + 0.65 * c) * Math.min(1, Math.abs(lateral) / 3 + 0.3);
@@ -325,7 +325,7 @@ export class Match {
     // Easy / Normal bots smash partly at the receiver (Hard still hunts the open corner)
     if (smash && p.kind === "bot") {
       const lv = this.brains.get(p)?.level ?? 0.5;
-      const pull = lv < 0.3 ? 0.65 : lv < 0.7 ? 0.4 : 0;
+      const pull = tierFor(lv).smashPull;
       let near = null, nd = 1e9;
       for (const q of this.players) if (q.team !== p.team) { const d = Math.hypot(q.pos.x - tx, q.pos.z - tz); if (d < nd) { nd = d; near = q; } }
       if (near && pull) { tx += (near.pos.x - tx) * pull; tz += (near.pos.z - tz) * pull; tx = Math.sign(tx || ox) * Math.max(3, Math.abs(tx)); }
@@ -334,15 +334,13 @@ export class Match {
     speed *= this.opts.pace ?? 1;
     let preferHigh = false;
     if (p.kind === "bot" && !smash && !serving) {
-      const lv = this.brains.get(p)?.level ?? 0.5;
-      if (lv < 0.7) {
-        const easy = lv < 0.3;
-        speed *= easy ? 0.78 : 0.82;
-        preferHigh = Math.random() < (easy ? 0.85 : 0.75);            // lofted shots hang in the air: time to get there
+      const T = tierFor(this.brains.get(p)?.level ?? 0.5);
+      if (T.shot < 1) {
+        speed *= T.shot;
+        preferHigh = Math.random() < T.loft;            // lofted shots hang in the air: time to get there
         let near = null, nd = 1e9;
         for (const q of this.players) if (q.team !== p.team) { const d = Math.hypot(q.pos.x - tx, q.pos.z - tz); if (d < nd) { nd = d; near = q; } }
-        const pull = easy ? 0.5 : 0.35;
-        if (near) { tx += (near.pos.x - tx) * pull; tz += (near.pos.z - tz) * pull; tx = Math.sign(tx || ox) * Math.max(0.9, Math.abs(tx)); }
+        if (near) { tx += (near.pos.x - tx) * T.pull; tz += (near.pos.z - tz) * T.pull; tx = Math.sign(tx || ox) * Math.max(0.9, Math.abs(tx)); }
       }
     }
     const sol = solveShot(from, [tx, tz], speed, spin, top, smash ? { clear: 0.1, maxApex: from[1] + 0.6 } : { clear: 0.3, preferHigh });
