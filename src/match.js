@@ -5,7 +5,7 @@ import { BotBrain } from "./bot.js";
 import { FX } from "./fx.js";
 import { buildEnv } from "./env.js";
 import { sfx } from "./sfx.js";
-import { COURT, PHYS, step, solveShot } from "./shuttle.js";
+import { COURT, PHYS, step, solveShot, simulate } from "./shuttle.js";
 import { RACKET } from "./rackets.js";
 
 const TICK = 1 / 60;
@@ -65,6 +65,13 @@ export class Match {
     this.reticleCharge = new THREE.Mesh(new THREE.RingGeometry(0.56, 0.7, 32, 1, 0, 0.01), new THREE.MeshBasicMaterial({ color: "#ffd23d", transparent: true, depthWrite: false }));
     this.reticleCharge.rotation.x = -Math.PI / 2; this.reticle.add(this.reticleCharge);
     this.reticle.position.y = 0.08; s.add(this.reticle);
+    // landing marker: where an opponent's shot will come down (red for smashes), with a disc that fills as it lands
+    this.landMark = new THREE.Group();
+    const lm = (c, op) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: op, depthWrite: false, toneMapped: false });
+    this.landRing = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.62, 40), lm("#ffffff", 0.9));
+    this.landFill = new THREE.Mesh(new THREE.CircleGeometry(0.5, 40), lm("#ffffff", 0.35));
+    for (const o of [this.landRing, this.landFill]) { o.rotation.x = -Math.PI / 2; o.renderOrder = 6; this.landMark.add(o); }
+    this.landMark.position.y = 0.075; this.landMark.visible = false; s.add(this.landMark);
     this.fx = new FX(s);
 
     this.players = this.opts.players.map((pd, i) => new Player(this, { ...pd, slot: i }));
@@ -262,7 +269,7 @@ export class Match {
   // effective reach: fast incoming shots (smashes) get a generous defensive reach so they can always be blocked back
   reachFor(p) {
     const v = this.shuttle.v, sp = Math.hypot(v[0], v[1], v[2]);
-    return p.d.reach * (1 + 0.45 * THREE.MathUtils.clamp((sp - 11) / 10, 0, 1));
+    return p.d.reach * (1 + 0.6 * THREE.MathUtils.clamp((sp - 11) / 10, 0, 1));
   }
 
   // closest point to `c` on the shuttle's path over the last tick
@@ -296,14 +303,22 @@ export class Match {
     const drop = c === 0 && Math.abs(tx) < 3.2;
     // overall pace is ~10% slower than before, and a full smash tops out near 30 m/s (was ~40) so it can be returned
     let speed = 0.9 * p.d.shot * (1 + 0.62 * c) * (smash ? 1.06 : 1) * (drop ? 0.72 : 1) * (serving ? 0.9 : 1);
-    // Easy / Normal bots smash a touch slower so their smashes stay returnable
-    if (smash && p.kind === "bot") { const lv = this.brains.get(p)?.level ?? 0.5; if (lv < 0.7) speed *= lv < 0.3 ? 0.9 : 0.95; }
+    // bot smashes are a touch slower than a player's (Easy 0.86, Normal 0.91, Hard 0.96) so they stay returnable
+    if (smash && p.kind === "bot") { const lv = this.brains.get(p)?.level ?? 0.5; speed *= lv < 0.3 ? 0.86 : lv < 0.7 ? 0.91 : 0.96; }
     const lateral = tz - from[2];
     const sideSign = Math.sign(lateral * ox) || (Math.random() < 0.5 ? 1 : -1);
     const spin = serving ? 0 : -sideSign * p.d.spin * (0.35 + 0.65 * c) * Math.min(1, Math.abs(lateral) / 3 + 0.3);
     const top = smash ? 0.6 : 0;
     // a smash goes down: aim it at least 3 m past the net and never let it climb (it used to loop way up off-screen)
     if (smash && Math.abs(tx) < 3) tx = 3 * ox;
+    // Easy / Normal bots smash partly at the receiver (Hard still hunts the open corner)
+    if (smash && p.kind === "bot") {
+      const lv = this.brains.get(p)?.level ?? 0.5;
+      const pull = lv < 0.3 ? 0.65 : lv < 0.7 ? 0.4 : 0;
+      let near = null, nd = 1e9;
+      for (const q of this.players) if (q.team !== p.team) { const d = Math.hypot(q.pos.x - tx, q.pos.z - tz); if (d < nd) { nd = d; near = q; } }
+      if (near && pull) { tx += (near.pos.x - tx) * pull; tz += (near.pos.z - tz) * pull; tx = Math.sign(tx || ox) * Math.max(3, Math.abs(tx)); }
+    }
     const sol = solveShot(from, [tx, tz], speed, spin, top, smash ? { clear: 0.1, maxApex: from[1] + 0.6 } : { clear: 0.3 });
     return { by: p.id, team: p.team, p: from, v: sol.v, s: spin * Math.sqrt(sol.speedFrac || 1), t: top, kind: smash ? "smash" : drop ? "drop" : c > 0.4 ? "power" : serving ? "serve" : "hit", c, seq: ++this.hitSeq };
   }
@@ -314,6 +329,9 @@ export class Match {
     sh.flying = true; sh.lastTeam = h.team; sh.lastHitter = h.by; sh.netted = false;
     sh.hitId = (h.base ?? sh.hitId) + 1; this.lastHit = h;
     this.flightT = 0;
+    // predict the landing spot (the flight model is deterministic) for the landing marker
+    const sim = simulate({ p: [...h.p], v: [...h.v], s: h.s, t: h.t }, 6);
+    this.landing = { x: sim.end.p[0], z: sim.end.p[2], t: sim.time, smash: h.kind === "smash", team: h.team, id: sim.hitNet ? -1 : sh.hitId };
     if (this.state === "serve") { this.state = "rally"; this.stateT = 0; this.ui?.serve(false); if (this.server) this.server.locked = false; }
     this.stats.rally++;
     if (p === this.local) { this.stats.hits++; if (h.kind === "smash") this.stats.smashes++; }
@@ -404,6 +422,19 @@ export class Match {
     this.fx.update(dt, sp, sh.flying);
     this.env.update(dt);
 
+    // landing marker for shots coming at the local player's side
+    {
+      const Lp = this.local, ld = this.landing, show = !!(Lp && ld && sh.flying && this.state === "rally" && ld.team !== Lp.team && ld.id === sh.hitId);
+      this.landMark.visible = show;
+      if (show) {
+        const left = Math.max(0, ld.t - this.flightT), k = 1 - left / Math.max(0.05, ld.t);
+        this.landMark.position.x = ld.x; this.landMark.position.z = ld.z;
+        const col = ld.smash ? "#ff4d6d" : "#fff4c8";
+        this.landRing.material.color.set(col); this.landFill.material.color.set(col);
+        this.landFill.scale.setScalar(Math.max(0.05, k));
+        this.landMark.scale.setScalar(ld.smash ? 1.15 + Math.sin(this.time * 18) * 0.06 : 1);
+      }
+    }
     // reticle
     const L = this.local;
     this.reticle.visible = !!L && (this.state === "rally" || this.state === "serve");
