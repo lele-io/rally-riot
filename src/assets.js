@@ -4,7 +4,8 @@ import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js
 import { RACKET } from "./rackets.js";
 import { normalizeLook, HATS_COVER_HAIR, OUTFIT_FIT } from "./looks.js";
 
-const NAMES = ["court", "lobby", "backdrop", "avatar", "shuttle", "racket_round", "racket_blade", "racket_wing"];
+const RACKET_FAMILIES = ["classic", "aero", "blade", "storm", "seraph", "celestial"];
+const NAMES = ["court", "lobby", "backdrop", "avatar", "shuttle", ...RACKET_FAMILIES.map((f) => "racket_" + f)];
 const models = {};
 
 // ---- art style: cel shading (3-band toon ramp) + inverted-hull ink outlines
@@ -111,7 +112,7 @@ export async function loadAssets(onProgress) {
   models.avatar.traverse((o) => { if (o.isSkinnedMesh) o.frustumCulled = false; });   // skinned bounds don't follow the pose
   addOutlines(models.avatar, (o) => /Nose|EarInner|Lace|Cuff|Sock|Eye|Shine|Lash|Lid|Brow|Mouth|Teeth|Scar|Stitch|Blush|Freckle|Bandaid|EyeBlack|Halo|Jewel|Details|Button|Aglet|Zip|Buckle|ClaspGem|Glass|Pocket|Knot|Tie|Logo|Seam|Stripe|Placket|Neckline|Waistband|Hem|Band[LR]|Pendant|Chain|Shades/.test(o.name));
   addOutlines(models.shuttle);
-  for (const r of ["racket_round", "racket_blade", "racket_wing"]) addOutlines(models[r], (o) => /Strings/.test(o.name));
+  for (const f of RACKET_FAMILIES) addOutlines(models["racket_" + f], (o) => /Strings|Groove|Glow|GripTape|Orbit|Halo/.test(o.name));
   for (const n of ["court", "lobby"]) addOutlines(models[n], (o) => flat.test(o.name) || /tile|tuft|Banner/i.test(o.name) || o.material.emissiveIntensity > 1.5);
 }
 
@@ -170,13 +171,43 @@ export function makeAvatar(look, teamColor) {
   return root;
 }
 
+// frame paint: a pattern painted in the toon shader from object-space position (works without UVs; the toon pass drops textures)
+const PATTERNS = { solid: 0, gradient: 1, stripes: 2, carbon: 3, flames: 4, stars: 5, split: 6, rings: 7 };
+function paintFrame(mat, color2, pattern) {
+  const m = mat.clone();
+  m.userData.paint = { uColB: { value: new THREE.Color(color2) }, uPat: { value: PATTERNS[pattern] ?? 0 } };
+  m.customProgramCacheKey = () => "rk-paint";
+  m.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, m.userData.paint);
+    sh.vertexShader = "varying vec3 vRk;\n" + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n vRk = position;");
+    sh.fragmentShader = "uniform vec3 uColB; uniform int uPat; varying vec3 vRk;\n" + sh.fragmentShader.replace("#include <color_fragment>", `#include <color_fragment>
+      float x = vRk.x, y = vRk.y, mk = 0.0;
+      if (uPat == 1) mk = smoothstep(0.42, 0.74, y);
+      else if (uPat == 2) mk = step(0.5, fract((x * 0.8 + y) * 16.0));
+      else if (uPat == 3) { vec2 c = floor(vec2(x + y, y - x) * 70.0); mk = mod(c.x + c.y, 2.0) * 0.55; }
+      else if (uPat == 4) mk = smoothstep(0.0, 1.0, (y - 0.4) * 5.0 + 0.45 * sin(x * 70.0 + y * 30.0));
+      else if (uPat == 5) { vec2 cell = floor(vec2(x, y) * 60.0); vec2 g = fract(vec2(x, y) * 60.0) - 0.5;
+        float hh = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453); mk = hh > 0.8 ? 1.0 - smoothstep(0.08, 0.3, length(g)) : 0.0; }
+      else if (uPat == 6) mk = step(0.0, x);
+      else if (uPat == 7) mk = step(0.55, fract(y * 24.0));
+      diffuseColor.rgb = mix(diffuseColor.rgb, uColB, clamp(mk, 0.0, 1.0));`);
+  };
+  return m;
+}
+
 export function makeRacket(id) {
   const r = RACKET[id] || RACKET.practice;
+  const light = new THREE.Color(r.accent).lerp(new THREE.Color("#ffffff"), 0.7);
   const o = cloneWith("racket_" + r.model, {
-    Frame: { color: r.frame },
-    Accent: { color: r.accent, emissive: 1.6 },
+    Frame: { color: r.frame }, Trim: { color: r.frame2 }, GripTape: { color: r.accent },
+    Strings: { color: "#" + light.getHexString() }, Accent: { color: r.accent, emissive: 1.6 },
   });
   o.userData.accent = new THREE.Color(r.accent);
-  o.traverse((m) => { if (m.isMesh && m.material.name === "Accent") o.userData.accentMat = m.material; });
+  const painted = {};
+  o.traverse((m) => {
+    if (!m.isMesh || m.userData.outline) return;
+    if (m.material.name === "Accent") o.userData.accentMat = m.material;
+    if (m.material.name === "Frame") m.material = painted.f || (painted.f = paintFrame(m.material, r.frame2, r.pattern));
+  });
   return o;
 }

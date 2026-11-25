@@ -37,6 +37,21 @@ export const RACKETS = [
   R("eclipse", "Eclipse Monarch", "mythical", "wing", "#120a1f", "#ff3d3d", [8, 8, 8, 8, 9, 9, 10], "Bends light. Bends shuttles."),
   R("seraph", "Voidwing Seraph", "mythical", "wing", "#e8e2ff", "#5cfff0", [10, 10, 9, 8, 9, 8, 7], "Never touches the floor."),
 ];
+// Looks: frame family by rarity (blender/rackets.py), a second color and a paint pattern for the frame shader (assets.js).
+// pattern: solid | gradient | stripes | carbon | flames | stars | split | rings
+export const FAMILY_BY_RARITY = { common: "classic", uncommon: "aero", rare: "blade", epic: "storm", legendary: "seraph", mythical: "celestial" };
+const PAINT = {
+  practice: ["#8a93a3", "rings"], birch: ["#8a5a32", "gradient"], rec: ["#ff9d5c", "stripes"],
+  gale: ["#2f9e8a", "gradient"], copper: ["#7a3b1d", "rings"], pebble: ["#4a4f5a", "carbon"],
+  tide: ["#5ff0ff", "gradient"], frost: ["#ffffff", "stripes"], thorn: ["#a6ff4d", "carbon"],
+  storm: ["#8a9bff", "flames"], venom: ["#b6ff3d", "stripes"], comet: ["#ffd23d", "flames"],
+  solar: ["#fff1a8", "gradient"], abyss: ["#6b5cff", "stars"], thunderhook: ["#4ef2ff", "split", "storm"],
+  starfall: ["#ff5ce1", "stars"], eclipse: ["#ff3d3d", "split"], seraph: ["#5cfff0", "gradient"],
+};
+for (const r of RACKETS) {
+  const [frame2, pattern, fam] = PAINT[r.id] || ["#ffffff", "solid"];
+  r.frame2 = frame2; r.pattern = pattern; r.model = fam || FAMILY_BY_RARITY[r.rarity];
+}
 export const RACKET = Object.fromEntries(RACKETS.map((r) => [r.id, r]));
 
 // Balance patch: the meta shifts between updates. Applied on top of base stats (see CLAUDE.md).
@@ -87,7 +102,7 @@ export function derive(stats) {
   return {
     move: 5.0 + 0.33 * stats.movement,            // m/s
     dashSpeed: 12 + 1.1 * stats.dash,             // m/s during a dash
-    dashCd: 1.7 - 0.08 * stats.dash,              // s
+    dashCd: 0.95 - 0.045 * stats.dash,            // s (was 1.7 - 0.08: too slow to recover from a cross-court shot)
     jump: 6.4 + 0.36 * stats.jump,                // m/s take-off
     shot: 16.5 + 0.75 * stats.power,              // m/s base shot speed
     chargeTime: 0.95 - 0.045 * stats.speed,       // s to full charge

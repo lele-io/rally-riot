@@ -296,6 +296,8 @@ export class Match {
     const drop = c === 0 && Math.abs(tx) < 3.2;
     // overall pace is ~10% slower than before, and a full smash tops out near 30 m/s (was ~40) so it can be returned
     let speed = 0.9 * p.d.shot * (1 + 0.62 * c) * (smash ? 1.06 : 1) * (drop ? 0.72 : 1) * (serving ? 0.9 : 1);
+    // Easy / Normal bots smash a touch slower so their smashes stay returnable
+    if (smash && p.kind === "bot") { const lv = this.brains.get(p)?.level ?? 0.5; if (lv < 0.7) speed *= lv < 0.3 ? 0.9 : 0.95; }
     const lateral = tz - from[2];
     const sideSign = Math.sign(lateral * ox) || (Math.random() < 0.5 ? 1 : -1);
     const spin = serving ? 0 : -sideSign * p.d.spin * (0.35 + 0.65 * c) * Math.min(1, Math.abs(lateral) / 3 + 0.3);

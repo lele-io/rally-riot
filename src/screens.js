@@ -31,13 +31,29 @@ export function statBars(id, compareTo) {
   }));
 }
 
+let iconSeq = 0;
 export function racketIcon(r, owned = true) {
-  // a tiny SVG of the racket head shape in its colors
-  const shape = r.model === "blade"
-    ? `<polygon points="20,4 33,12 33,28 20,36 7,28 7,12" fill="none" stroke="${r.frame}" stroke-width="3.5"/>`
-    : `<ellipse cx="20" cy="20" rx="12" ry="15" fill="none" stroke="${r.frame}" stroke-width="3.5"/>`;
-  const wing = r.model === "wing" ? `<path d="M6 22 L-2 12 L4 26 Z M34 22 L42 12 L36 26 Z" fill="${r.accent}"/><ellipse cx="20" cy="20" rx="17" ry="17" fill="none" stroke="${r.accent}" stroke-width="1"/>` : "";
-  const svg = `<svg viewBox="-4 0 48 64" width="40" height="54">${wing}${shape}<path d="M14 14h12M13 20h14M14 26h12M17 8v24M20 6v28M23 8v24" stroke="#fff" stroke-opacity=".5" stroke-width=".8"/><rect x="18.5" y="35" width="3" height="10" fill="${r.frame}"/><circle cx="20" cy="37" r="2.5" fill="${r.accent}"/><rect x="17.5" y="45" width="5" height="15" rx="2" fill="#222"/></svg>`;
+  // a tiny SVG of the racket: its frame family shape, frame -> second-color gradient, accent glow details, taped grip
+  const id = "rg" + (++iconSeq), A = r.accent, F = r.frame, F2 = r.frame2 || r.frame;
+  const head = {
+    classic: `<rect x="8" y="5" width="24" height="30" rx="10" ry="12"/>`,
+    aero: `<path d="M20 4 C34 4 34 18 31 26 C29 32 24 36 20 36 C16 36 11 32 9 26 C6 18 6 4 20 4 Z"/>`,
+    blade: `<polygon points="20,3 33,11 33,27 20,37 7,27 7,11"/>`,
+    storm: `<ellipse cx="20" cy="20" rx="12" ry="15"/>`,
+    seraph: `<ellipse cx="20" cy="20" rx="12.5" ry="15.5"/>`,
+    celestial: `<circle cx="20" cy="20" r="13"/>`,
+  }[r.model] || `<ellipse cx="20" cy="20" rx="12" ry="15"/>`;
+  const extra = {
+    blade: `<path d="M33 11 L41 2 L35 14 Z M7 11 L-1 2 L5 14 Z" fill="${A}"/>`,
+    storm: `<path d="M32 16 l5 -3 l-1 4 l5 -2 M8 16 l-5 -3 l1 4 l-5 -2" stroke="${A}" stroke-width="1.6" fill="none"/>`,
+    seraph: `<path d="M8 22 L-3 8 L1 16 L-4 14 L3 26 Z M32 22 L43 8 L39 16 L44 14 L37 26 Z" fill="${F2}" stroke="${A}" stroke-width=".7"/><circle cx="20" cy="20" r="18" fill="none" stroke="${A}" stroke-width=".8"/>`,
+    celestial: `<path d="M6 8 A17 17 0 0 0 10 34 A14 14 0 0 1 6 8 Z" fill="${F2}"/><path d="M20 -1 l1.5 3.5 l3.5 1.5 l-3.5 1.5 l-1.5 3.5 l-1.5 -3.5 l-3.5 -1.5 l3.5 -1.5 Z" fill="${A}"/><ellipse cx="20" cy="20" rx="20" ry="6" fill="none" stroke="${A}" stroke-width=".7" transform="rotate(-25 20 20)"/>`,
+  }[r.model] || "";
+  const svg = `<svg viewBox="-5 -3 50 67" width="40" height="54"><defs><linearGradient id="${id}" x1="0" y1="1" x2="0.3" y2="0"><stop offset="0" stop-color="${F}"/><stop offset="1" stop-color="${F2}"/></linearGradient></defs>
+    ${extra}<g fill="none" stroke="url(#${id})" stroke-width="3.6">${head}</g>
+    <path d="M14 13h12M12.5 19h15M13 25h14M15 31h10M16 8v26M20 6v29M24 8v26" stroke="#fff" stroke-opacity=".45" stroke-width=".8"/>
+    <rect x="18.6" y="36" width="2.8" height="9" fill="${F}"/><circle cx="20" cy="38" r="2.2" fill="${A}"/>
+    <rect x="17.3" y="45" width="5.4" height="15" rx="2" fill="#222"/><path d="M17.3 48l5.4 -2M17.3 52l5.4 -2M17.3 56l5.4 -2" stroke="${A}" stroke-width="1.2"/></svg>`;
   const e = h("div", { class: "ricon" + (owned ? "" : " locked") }); e.innerHTML = svg; return e;
 }
 

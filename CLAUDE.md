@@ -24,6 +24,8 @@ Do NOT modify `lele-io/cupidium-relay` or `lele-io/one-in-a-cupidium`.
 - `shuttle.js` pure flight model (gravity, quadratic drag, sidespin/topspin Magnus) + `solveShot` (aims a shot at a court
   point; flattest arc that clears the net, softens speed if needed; spin is pre-compensated). Deterministic → shared by bot/net.
 - `rackets.js` catalog (18 original rackets, 6 rarities), `PATCH` balance tweaks, `derive(stats)` → gameplay numbers.
+  Looks: family by rarity (`FAMILY_BY_RARITY`: classic/aero/blade/storm/seraph/celestial = `public/models/racket_<family>.glb`,
+  built by `blender/rackets.py`) + `PAINT` (second color + frame pattern, painted by the shader in `assets.paintFrame`).
 - Art style (owner asked: Zelda × Wuthering Waves × Silksong, indie): toon shading (all glTF materials → MeshToonMaterial
   with a 4-band ramp in assets.js), inverted-hull ink outlines (`outlineMaterial`), runtime palette overrides (`recolor`),
   warm grade + vignette pass. UI: chunky slanted Roblox-style buttons (Lilita One) + ink/gold filigree panels.
