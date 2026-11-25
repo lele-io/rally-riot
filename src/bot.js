@@ -7,7 +7,7 @@ export class BotBrain {
     this.plan = null; this.replanT = 0; this.serveT = 0; this.held = 0; this.wantSmash = false;
     this.aim = [0, 0]; this.lastHitSeen = -1;
     // difficulty knobs. Easy (0.2) reacts late, moves at ~80% speed, rarely dashes or jumps, and almost never smashes.
-    this.react = 0.42 - 0.32 * level;
+    this.react = level < 0.7 ? 0.42 - 0.2 * level : 0.42 - 0.32 * level;   // Easy 0.38 s, Normal 0.36 s, Hard 0.15 s
     this.speedMul = Math.min(1, 0.72 + 0.4 * level);
     this.smashChance = level < 0.3 ? 0.05 : level < 0.7 ? 0.2 : Math.min(0.92, level * 1.05);   // Easy 5%, Normal 20%, Hard ~90%
     this.dashes = level >= 0.3;
@@ -114,7 +114,7 @@ export class BotBrain {
     let pl = best || last;
     if (!pl) return null;
     // weaker bots misjudge a bit
-    const err = (1 - this.level) * (this.level < 0.3 ? 1.1 : 0.5);
+    const err = (1 - this.level) * (this.level < 0.3 ? 1.1 : this.level < 0.7 ? 0.8 : 0.5);
     return { ...pl, x: pl.x + (Math.random() - 0.5) * err, z: pl.z + (Math.random() - 0.5) * err };
   }
 
@@ -126,7 +126,7 @@ export class BotBrain {
       const depth = serve ? 5 + Math.random() * 3.2 : 1.6 + Math.random() * (L - 2.1);
       const x = ox * depth, z = (Math.random() * 2 - 1) * (W - 0.6);
       let dmin = 99; for (const q of opp) dmin = Math.min(dmin, Math.hypot(q.pos.x - x, q.pos.z - z));
-      const score = dmin * (this.level < 0.3 ? 0.1 : 0.4 + this.level) + Math.random() * 2.5; // easy bots don't hunt open space
+      const score = dmin * (this.level < 0.3 ? 0.1 : this.level < 0.7 ? 0.25 : 0.4 + this.level) + Math.random() * 2.5; // Easy / Normal barely hunt open space
       if (!best || score > best.s) best = { x, z, s: score };
     }
     const e = (1 - this.level) * 1.4; // sloppy bots sometimes hit long or wide

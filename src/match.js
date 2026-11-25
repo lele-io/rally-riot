@@ -337,11 +337,11 @@ export class Match {
       const lv = this.brains.get(p)?.level ?? 0.5;
       if (lv < 0.7) {
         const easy = lv < 0.3;
-        speed *= easy ? 0.78 : 0.86;
-        preferHigh = Math.random() < (easy ? 0.85 : 0.6);            // lofted shots hang in the air: time to get there
+        speed *= easy ? 0.78 : 0.82;
+        preferHigh = Math.random() < (easy ? 0.85 : 0.75);            // lofted shots hang in the air: time to get there
         let near = null, nd = 1e9;
         for (const q of this.players) if (q.team !== p.team) { const d = Math.hypot(q.pos.x - tx, q.pos.z - tz); if (d < nd) { nd = d; near = q; } }
-        const pull = easy ? 0.5 : 0.2;
+        const pull = easy ? 0.5 : 0.35;
         if (near) { tx += (near.pos.x - tx) * pull; tz += (near.pos.z - tz) * pull; tx = Math.sign(tx || ox) * Math.max(0.9, Math.abs(tx)); }
       }
     }
