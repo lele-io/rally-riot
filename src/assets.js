@@ -83,8 +83,9 @@ export async function loadAssets(onProgress) {
   for (const n of ["court", "lobby"]) models[n].traverse((o) => { if (o.isMesh && flat.test(o.name)) o.castShadow = false; });
   models.backdrop.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; } });
   // ink lines on characters, gear and the bigger props
-  addOutlines(models.avatar, (o) => /Eye|Shine/.test(o.name));
-  addOutlines(models.avatar_parts, (o) => /Scar|Stitch|Blush|Halo|Ear|Jewel|Flower|Bridge|Torus/.test(o.name) || o.parent?.name === "face_glasses");
+  // (small face strokes and trims stay outline-free: an ink hull would turn them into blobs)
+  addOutlines(models.avatar, (o) => /Eye|Shine|Lash|Brow|Mouth|Nose|EarInner|Lace/.test(o.name));
+  addOutlines(models.avatar_parts, (o) => /Scar|Stitch|Blush|Halo|EarInner|Jewel|Flower|Details|Button|Aglet|Zip|Buckle|ClaspGem|Glass|Pocket|Knot|Tie/.test(o.name) || o.parent?.name === "face_glasses");
   addOutlines(models.shuttle);
   for (const r of ["racket_round", "racket_blade", "racket_wing"]) addOutlines(models[r], (o) => /Strings/.test(o.name));
   for (const n of ["court", "lobby"]) addOutlines(models[n], (o) => flat.test(o.name) || /tile|tuft|Banner/i.test(o.name) || o.material.emissiveIntensity > 1.5);
@@ -119,7 +120,8 @@ export function makeAvatar(look, teamColor) {
   const bare = L.outfit === "vest";
   const legs = { cloak: "#2b2033", vest: L.skin, gown: L.c1, jacket: L.c2 }[L.outfit];
   const colors = { Skin: L.skin, Hair: L.hairColor, Eye: L.eyes, Outfit1: L.c1, Outfit2: L.c2, HatMain: L.hatColor, HatBand: L.hatBand,
-    Team: teamColor, Legs: legs, Sleeve: bare ? L.skin : L.c1 };
+    Team: teamColor, Legs: legs, Sleeve: bare ? L.skin : L.c1, Cuff: L.c2 };
+  if (bare) root.traverse((o) => { if (/^Cuff/.test(o.name)) o.visible = false; }); // bare arms: no sleeve cuffs
   const cache = {};
   root.traverse((m) => {
     if (!m.isMesh || m.userData.outline) return;

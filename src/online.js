@@ -83,7 +83,31 @@ export function startOnline(game, { conn, me, hostId, size, roster, points }) {
   }));
   const meP = roster.find((p) => p.id === me);
   const tn = (t) => (size === 1 ? roster.find((p) => p.team === t)?.name : t === meP.team ? "YOUR TEAM" : "RIVALS");
-  game.startMatch({ type: "online", size, players, localId: me, names: [tn(0), tn(1)], points, net, isHost });
+  game.startMatch({ type: "online", size, players, localId: me, names: [tn(0), tn(1)], points, net, isHost, online: { conn, me, hostId, size, roster, points } });
+}
+
+// end-screen rematch: the host restarts the same room with the same teams (anyone who left is a bot now);
+// the others can ask for one, which shows up on the host's screen
+export function rematchBox(game, cfg) {
+  const o = cfg.online, net = cfg.net, conn = o.conn, isHost = o.me === o.hostId;
+  if (!conn?.open) return null;
+  const wants = h("div", { class: "wants" }), voters = new Set();
+  const begin = (m) => { off(); net.off(); startOnline(game, { conn, me: o.me, hostId: m.host, size: m.size, roster: m.roster, points: m.points }); };
+  const btn = h("button", { class: "btn hot", onclick: () => {
+    sfx.ui();
+    if (isHost) {
+      const roster = o.roster.map((p) => (net.left.has(p.id) && !p.bot ? { ...p, bot: true, name: p.name + " (bot)" } : p));
+      const msg = { k: "start", size: o.size, roster, host: o.me, points: o.points };
+      conn.send(msg); begin(msg);
+    } else { conn.send({ k: "again", name: profile().name }, o.hostId); btn.disabled = true; btn.textContent = "WAITING FOR HOST…"; }
+  } }, isHost ? "REMATCH" : "ASK FOR REMATCH");
+  const off = conn.on((m) => {
+    if (m.k === "again" && isHost) { voters.add(m.name); wants.textContent = [...voters].join(", ") + (voters.size > 1 ? " want" : " wants") + " a rematch!"; sfx.ui(); }
+    if (m.k === "start" && !isHost) begin(m);
+    if (!isHost && ((m.k === "leave" && m.id === o.hostId) || m.k === "closed")) { wants.textContent = "The host left the room."; btn.disabled = true; }
+  });
+  if (!isHost && net.pendingStart) { const m = net.pendingStart; net.pendingStart = null; setTimeout(() => begin(m), 0); }
+  return h("div", { class: "col", style: "align-items:center;gap:6px;margin-top:4px" }, btn, wants);
 }
 
 export const relayInfo = () => RELAY_URL;

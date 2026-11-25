@@ -34,11 +34,12 @@ export const clone = (st) => ({ p: [...st.p], v: [...st.v], s: st.s, t: st.t });
 // Fly a shuttle until it lands / leaves the arena. Returns {land:[x,z], time, netCross:y at x=0 or null, hitNet}
 export function simulate(st0, maxT = 6, sample = null) {
   const st = clone(st0);
-  let t = 0, netY = null, hitNet = false;
+  let t = 0, netY = null, hitNet = false, apex = st.p[1];
   const side0 = Math.sign(st.p[0]);
   while (t < maxT) {
     const px = st.p[0];
     step(st); t += PHYS.dt;
+    if (st.p[1] > apex) apex = st.p[1];
     if (sample) sample(st, t);
     if (netY == null && Math.sign(st.p[0]) !== Math.sign(px) && px !== 0) {
       const f = px / (px - st.p[0]);
@@ -48,7 +49,7 @@ export function simulate(st0, maxT = 6, sample = null) {
     if (st.p[1] <= 0) break;
     if (Math.abs(st.p[0]) > COURT.arenaX || Math.abs(st.p[2]) > COURT.arenaZ || st.p[1] > COURT.ceiling) break;
   }
-  return { land: [st.p[0], st.p[2]], time: t, netCross: netY, hitNet, side0, end: st };
+  return { land: [st.p[0], st.p[2]], time: t, netCross: netY, hitNet, side0, end: st, apex };
 }
 
 // Find a launch velocity that lands the shuttle at `target` [x,z] from `from` [x,y,z] at `speed`.
@@ -66,7 +67,9 @@ export function solveShot(from, target, speed, spin = 0, topspin = 0, opts = {})
   return best;
 }
 
-function solveAt(from, target, speed, spin, topspin, { clear = 0.25, preferHigh = false } = {}) {
+// MAX_APEX: the follow camera can't show a shuttle much higher than this, so no shot may climb above it
+export const MAX_APEX = 7.5;
+function solveAt(from, target, speed, spin, topspin, { clear = 0.25, preferHigh = false, maxApex = MAX_APEX } = {}) {
   let aim = [target[0], target[1]];
   let best = null;
   for (let it = 0; it < 4; it++) {
@@ -77,7 +80,7 @@ function solveAt(from, target, speed, spin, topspin, { clear = 0.25, preferHigh 
       const v = [Math.cos(pitch) * ux * speed, Math.sin(pitch) * speed, Math.cos(pitch) * uz * speed];
       const r = simulate({ p: [...from], v, s: spin, t: topspin });
       const along = (r.land[0] - from[0]) * ux + (r.land[1] - from[2]) * uz;
-      const ok = r.end.p[1] < COURT.ceiling - 0.2 && !r.hitNet && !(r.netCross != null && r.netCross < COURT.netH + clear) && Math.sign(r.land[0]) !== Math.sign(from[0]);
+      const ok = r.apex <= Math.max(maxApex, from[1] + 0.3) && !r.hitNet && !(r.netCross != null && r.netCross < COURT.netH + clear) && Math.sign(r.land[0]) !== Math.sign(from[0]);
       return { v, r, f: along - dist, ok, pitch };
     };
     // scan pitch, bisect every sign change of (range - wanted range)
@@ -101,9 +104,9 @@ function solveAt(from, target, speed, spin, topspin, { clear = 0.25, preferHigh 
     aim = [aim[0] + (target[0] - land[0]), aim[1] + (target[1] - land[1])];
   }
   if (!best) {
-    // nothing clears the net: lob it straight up-court
+    // nothing clears the net: a gentle, fixed-size lob over it (never scaled by shot speed: a smash used to rocket off-screen here)
     const dir = Math.sign(target[0] - from[0]) || 1;
-    best = { v: [dir * speed * 0.6, speed * 0.8, 0], pitch: 1, err: 99, time: 2 };
+    best = { v: [dir * 7, Math.max(4, 9.5 - from[1]), 0], pitch: 1, err: 99, time: 2 };
   }
   return best;
 }

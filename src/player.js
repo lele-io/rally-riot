@@ -56,7 +56,7 @@ export class Player {
     this.racketObj = makeRacket(this.racketId);
     this.racketObj.rotation.x = Math.PI; // handle continues the arm
     this.racketObj.position.y = 0.06;
-    this.racketObj.scale.setScalar(1.35);
+    this.racketObj.scale.setScalar(1.55);
     this.hand.add(this.racketObj);
     this.accent = this.racketObj.userData.accent;
   }
@@ -81,10 +81,14 @@ export class Player {
     const d = this.d, sw = this.swing;
     // --- swing state machine
     const held = !!input.swing;
-    if (held && sw.st === "idle") { sw.st = "charge"; sw.t = 0; sw.charge = 0; }
+    // a click during the recovery is remembered briefly, so a quick tap is never swallowed
+    this.tapBuf = input.tap ? 0.3 : Math.max(0, (this.tapBuf || 0) - dt);
+    if (sw.st === "idle" && (held || this.tapBuf > 0)) { sw.st = "charge"; sw.t = 0; sw.charge = 0; sw.tapOnly = !held; this.tapBuf = 0; }
     if (sw.st === "charge") {
       sw.t += dt; sw.charge = Math.min(1, sw.t / d.chargeTime);
-      if (!held) { sw.st = "swing"; sw.power = sw.t < TAP ? 0 : sw.charge; sw.t = 0; sw.hit = false; this.match.onSwing(this); }
+      // assist: if you're still holding when the shuttle reaches your racket, swing anyway with the charge you have
+      const assist = held && input.assist && this.match.shuttleAtRacket(this);
+      if (!held || sw.tapOnly || assist) { sw.st = "swing"; sw.power = sw.t < TAP ? 0 : Math.min(sw.charge, input.maxPower ?? 1); sw.t = 0; sw.hit = false; sw.tapOnly = false; this.match.onSwing(this); this.match.tryHit(this); }
     } else if (sw.st === "swing") {
       sw.t += dt;
       if (!sw.hit) this.match.tryHit(this);
@@ -109,16 +113,16 @@ export class Player {
       if (Math.hypot(dx, dz) < 0.1) { dx = this.facing.x; dz = this.facing.z; }
       const l = Math.hypot(dx, dz) || 1;
       this.airDash = !this.onGround;
-      const boost = this.airDash ? 1.55 : 1; // air dashes carry farther
+      const boost = this.airDash ? 1.12 : 1; // air dashes carry a little farther (was 1.55 × 0.24 s: way too far)
       this.dashVel.set((dx / l) * d.dashSpeed * boost, 0, (dz / l) * d.dashSpeed * boost);
-      this.dashT = this.airDash ? 0.24 : 0.17; this.dashCd = d.dashCd;
-      if (this.airDash) this.vel.y = Math.max(this.vel.y, 1.5);
+      this.dashT = this.airDash ? 0.19 : 0.17; this.dashCd = d.dashCd;
+      if (this.airDash) this.vel.y = Math.max(this.vel.y, 0.8);
       this.match.onDash(this);
     }
     if (this.dashT > 0) { this.dashT -= dt; if (this.dashT <= 0) this.dashVel.set(0, 0, 0); }
 
     if (input.jump && this.onGround && !this.locked) { this.vel.y = d.jump; this.onGround = false; this.match.onJump(this); }
-    this.vel.y -= GRAV * (this.dashT > 0 && this.airDash ? 0.3 : 1) * dt;
+    this.vel.y -= GRAV * (this.dashT > 0 && this.airDash ? 0.5 : 1) * dt;
 
     const mv = { x: (this.vel.x + this.dashVel.x) * dt, y: this.vel.y * dt, z: (this.vel.z + this.dashVel.z) * dt };
     this.cc.computeColliderMovement(this.collider, mv);

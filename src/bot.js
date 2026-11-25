@@ -5,7 +5,12 @@ export class BotBrain {
   constructor(match, player, level = 0.5) {
     this.m = match; this.p = player; this.level = level;
     this.plan = null; this.replanT = 0; this.serveT = 0; this.held = 0; this.wantSmash = false;
-    this.aim = [0, 0]; this.lastHitSeen = -1; this.react = 0.28 - 0.18 * level;
+    this.aim = [0, 0]; this.lastHitSeen = -1;
+    // difficulty knobs. Easy (0.2) reacts late, moves at ~80% speed, rarely dashes or jumps, and almost never smashes.
+    this.react = 0.42 - 0.32 * level;
+    this.speedMul = Math.min(1, 0.72 + 0.4 * level);
+    this.smashChance = level < 0.3 ? 0.08 : Math.min(0.92, level * 1.05);
+    this.dashes = level >= 0.3;
   }
 
   think(dt) {
@@ -23,7 +28,11 @@ export class BotBrain {
     } else this.serveT = 0;
 
     if (m.state === "rally" && sh.flying && sh.lastTeam !== p.team) {
-      if (sh.hitId !== this.lastHitSeen) { this.lastHitSeen = sh.hitId; this.plan = null; this.replanT = this.react; this.pickAim(false); }
+      if (sh.hitId !== this.lastHitSeen) {
+        this.lastHitSeen = sh.hitId; this.plan = null; this.replanT = this.react; this.pickAim(false);
+        this.smashRoll = Math.random() < this.smashChance; // decided once per incoming shot (was re-rolled every tick)
+        this.power = this.level < 0.3 ? Math.random() * 0.35 : 0.3 + 0.7 * Math.random() * this.level; // non-smash charge
+      }
       this.replanT -= dt;
       if (this.replanT <= 0) { this.plan = this.intercept(); this.replanT = 0.12; }
       if (this.plan && this.amChaser()) {
@@ -31,14 +40,15 @@ export class BotBrain {
         goal = { x: pl.x - f.x * 0.45 + f.z * 0.2, z: pl.z - f.z * 0.45 - f.x * 0.2 };
         const dist = Math.hypot(goal.x - p.pos.x, goal.z - p.pos.z), tLeft = pl.t - m.flightT;
         urgent = dist > p.d.move * Math.max(0.05, tLeft - 0.1);
-        if (urgent && dist > 2.2 && p.dashCd <= 0) inp.dash = true;
+        if (urgent && dist > 2.2 && p.dashCd <= 0 && (this.dashes || Math.random() < 0.01)) inp.dash = true;
         // jump for high balls: take off so the apex lines up with contact
         const tUp = p.d.jump / 24;
-        if (pl.y > 2.35 && p.onGround && tLeft < tUp + 0.05 && tLeft > tUp - 0.12 && dist < 1.6) inp.jump = true;
-        // power swing: smash anything high, charge in advance
-        this.wantSmash = pl.y > 2.1 && Math.random() < 0.9;
+        if (pl.y > 2.35 && p.onGround && tLeft < tUp + 0.05 && tLeft > tUp - 0.12 && dist < 1.6 && (this.smashRoll || this.level > 0.6)) inp.jump = true;
+        // power swing: smash high balls (how often depends on skill), charge in advance
+        this.wantSmash = pl.y > 2.1 && this.smashRoll;
+        inp.maxPower = this.wantSmash ? 1 : this.power; // a bot that didn't plan a smash can't stumble into one by over-charging
         if (p.swing.st === "idle" || p.swing.st === "charge") {
-          const chargeLead = this.wantSmash ? p.d.chargeTime * (0.6 + 0.4 * this.level) : 0.12;
+          const chargeLead = this.wantSmash ? p.d.chargeTime * (0.6 + 0.4 * this.level) : 0.12 + p.d.chargeTime * (this.power || 0);
           if (tLeft < chargeLead + 0.1) inp.swing = true;
           // release just before the shuttle's closest pass to the racket (the hit window lasts ~0.17 s)
           if (p.swing.st === "charge") {
@@ -55,6 +65,7 @@ export class BotBrain {
     const dx = goal.x - p.pos.x, dz = goal.z - p.pos.z, dl = Math.hypot(dx, dz);
     if (dl > 0.15) { const s = Math.min(1, dl / 0.6); inp.mx = (dx / dl) * s; inp.mz = (dz / dl) * s; }
     if (!urgent && !this.plan) { inp.mx *= 0.7; inp.mz *= 0.7; }
+    inp.mx *= this.speedMul; inp.mz *= this.speedMul;
     return inp;
   }
 
@@ -103,7 +114,7 @@ export class BotBrain {
     let pl = best || last;
     if (!pl) return null;
     // weaker bots misjudge a bit
-    const err = (1 - this.level) * 0.5;
+    const err = (1 - this.level) * (this.level < 0.3 ? 1.1 : 0.5);
     return { ...pl, x: pl.x + (Math.random() - 0.5) * err, z: pl.z + (Math.random() - 0.5) * err };
   }
 
@@ -115,7 +126,7 @@ export class BotBrain {
       const depth = serve ? 5 + Math.random() * 3.2 : 1.6 + Math.random() * (L - 2.1);
       const x = ox * depth, z = (Math.random() * 2 - 1) * (W - 0.6);
       let dmin = 99; for (const q of opp) dmin = Math.min(dmin, Math.hypot(q.pos.x - x, q.pos.z - z));
-      const score = dmin * (0.4 + this.level) + Math.random() * 2.5;
+      const score = dmin * (this.level < 0.3 ? 0.1 : 0.4 + this.level) + Math.random() * 2.5; // easy bots don't hunt open space
       if (!best || score > best.s) best = { x, z, s: score };
     }
     const e = (1 - this.level) * 1.4; // sloppy bots sometimes hit long or wide

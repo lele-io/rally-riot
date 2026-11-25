@@ -1,3 +1,5 @@
+import { binds, keyName } from "./keybinds.js";
+
 // DOM overlay: match HUD (score, banners, charge/dash meters) and the simple screens.
 const $ = (sel, el = document) => el.querySelector(sel);
 export const h = (tag, attrs = {}, ...kids) => {
@@ -21,11 +23,12 @@ export class MatchHUD {
         h("div", { class: "vs" }, "VS"),
         h("div", { class: "team t1" }, h("b", { class: "s1" }, "0"), h("span", { class: "tname" }, names[1]))),
       h("div", { class: "banner" }), h("div", { class: "pops" }),
-      h("div", { class: "servehint" }), h("div", { class: "crosshair" }), h("div", { class: "lockbadge" }, "Click to grab the camera · hold ALT for your cursor"),
+      h("div", { class: "servehint" }), h("div", { class: "crosshair" }), h("div", { class: "lockbadge" }, "Click to grab the camera"),
       h("div", { class: "meters" },
         h("div", { class: "meter charge" }, h("i"), h("span", {}, "POWER")),
-        h("div", { class: "meter dash" }, h("i"), h("span", {}, "DASH  SHIFT"))),
-      h("div", { class: "keys" }, "WASD move · Mouse look + aim · Click swing (hold = power) · Space jump · Shift dash · Wheel zoom · Hold Alt for cursor"));
+        h("div", { class: "meter dash" }, h("i"), h("span", {}, "DASH  " + keyName(binds().dash)))),
+      h("div", { class: "offarrow" }, h("span", { class: "tip" }), h("b", {})),
+      h("div", { class: "keys" }, keyHint()));
     if (flip) this.root.classList.add("flip");
     root.append(this.root);
     this.bannerT = null;
@@ -56,6 +59,21 @@ export class MatchHUD {
     const c = $(".charge i", this.root); c.style.width = ch * 100 + "%"; c.classList.toggle("full", ch >= 1);
     const d = $(".dash i", this.root); d.style.width = (1 - p.dashCd / p.d.dashCd) * 100 + "%"; d.classList.toggle("full", p.dashCd <= 0);
   }
+  // arrow at the screen edge pointing at an off-screen shuttle (x, y in NDC; angle in rad), with its height
+  offscreen(show, x, y, ang, height) {
+    const a = this.arrow || (this.arrow = $(".offarrow", this.root));
+    a.classList.toggle("show", show);
+    if (!show) return;
+    a.style.left = (x * 0.5 + 0.5) * 100 + "%"; a.style.top = (-y * 0.5 + 0.5) * 100 + "%";
+    a.firstChild.style.transform = `rotate(${-ang}rad)`;
+    a.lastChild.textContent = height > 0.5 ? height.toFixed(0) + "m" : "";
+  }
   lockState(on) { this.root.classList.toggle("unlocked", !on); }
   dispose() { this.root.remove(); }
+}
+
+function keyHint() {
+  const b = binds(), mv = [b.forward, b.left, b.back, b.right].map(keyName);
+  const wasd = mv.every((k) => k.length === 1) ? mv.join("") : mv.join(" ");
+  return `${wasd} move · Mouse look + aim · ${keyName(b.swing)} swing (hold = power) · ${keyName(b.jump)} jump · ${keyName(b.dash)} dash · Wheel zoom · Hold ${keyName(b.cursor)} for cursor`;
 }

@@ -10,7 +10,7 @@ import { RACKET } from "./rackets.js";
 
 const TICK = 1 / 60;
 const CROSSHAIR_Y = 0.18; // NDC height of the crosshair (CSS .crosshair top = 41%)
-const SHUTTLE_SCALE = 3.2;
+const SHUTTLE_SCALE = 3.75; // a bit larger than life so it reads at a distance
 const HOMES = {
   1: [[5.2, 0]],
   2: [[6.2, -2.4], [6.2, 2.4]],
@@ -49,10 +49,15 @@ export class Match {
     fixed(30, 6, 0.5, 0, 6, COURT.arenaZ - 0.2); fixed(30, 6, 0.5, 0, 6, -COURT.arenaZ + 0.2);
     fixed(0.12, 6, 30, 0, 6, 0);
 
-    // shuttle + its shadow blob
+    // shuttle + a white marker on the ground right below it (so you always know where it is)
     this.shuttleObj = getModel("shuttle"); this.shuttleObj.scale.setScalar(SHUTTLE_SCALE); s.add(this.shuttleObj);
-    this.blob = new THREE.Mesh(new THREE.CircleGeometry(0.22, 20), new THREE.MeshBasicMaterial({ color: "#3a2a40", transparent: true, opacity: 0.45, depthWrite: false }));
-    this.blob.rotation.x = -Math.PI / 2; s.add(this.blob);
+    this.blob = new THREE.Group();
+    const bm = (op) => new THREE.MeshBasicMaterial({ color: "#ffffff", transparent: true, opacity: op, depthWrite: false, toneMapped: false });
+    const bRing = new THREE.Mesh(new THREE.RingGeometry(0.26, 0.34, 40), bm(0.95));
+    const bDot = new THREE.Mesh(new THREE.CircleGeometry(0.07, 20), bm(0.95));
+    const bFill = new THREE.Mesh(new THREE.CircleGeometry(0.26, 40), bm(0.18));
+    for (const o of [bFill, bRing, bDot]) { o.rotation.x = -Math.PI / 2; o.renderOrder = 5; this.blob.add(o); }
+    s.add(this.blob);
     // aim reticle on the far court
     this.reticle = new THREE.Group();
     const rm = new THREE.MeshBasicMaterial({ color: "#fff6e0", transparent: true, opacity: 0.95, depthWrite: false });
@@ -65,7 +70,8 @@ export class Match {
     this.players = this.opts.players.map((pd, i) => new Player(this, { ...pd, slot: i }));
     this.local = this.players.find((p) => p.id === this.opts.localId) || null;
     this.brains = new Map();
-    for (const p of this.players) if (p.kind === "bot") this.brains.set(p, new BotBrain(this, p, p.level ?? 0.5));
+    // (the skill level lives on the player *description*: Player doesn't keep it, so reading p.level here made every bot Normal)
+    this.players.forEach((p, i) => { if (p.kind === "bot") this.brains.set(p, new BotBrain(this, p, this.opts.players[i].level ?? 0.5)); });
     this.viewSide = this.local ? this.local.side : -1;
     this.aim = [-this.viewSide * 6, 0];
 
@@ -239,15 +245,41 @@ export class Match {
     const serving = this.state === "serve" && this.server === p && !sh.flying;
     if (!serving && (this.state !== "rally" || !sh.flying || sh.lastTeam === p.team)) return;
     const hc = p.hitCenter();
-    const d = Math.hypot(sh.p[0] - hc.x, sh.p[1] - hc.y, sh.p[2] - hc.z);
-    if (!serving && d > p.d.reach) return;
-    if (sh.p[1] < 0.15) return;
+    // swept test: a fast shuttle moves ~0.5 m per tick, so check the whole path since last tick, not just where it is now
+    const { d, at } = serving ? { d: 0, at: sh.p } : this.closestOnPath(hc);
+    const reach = this.reachFor(p);
+    if (!serving && d > reach) return;
+    if (at[1] < 0.15) return;
     p.swing.hit = true;
+    if (!serving) sh.p = [...at];
     const aim = p === this.local ? this.aim : this.brains.get(p).aim;
-    const hit = this.computeShot(p, aim, serving, d / p.d.reach);
+    const hit = this.computeShot(p, aim, serving, Math.min(1, d / p.d.reach));
     hit.base = sh.hitId;
     this.applyHit(hit);
     this.net?.send({ k: "hit", ...hit });
+  }
+
+  // effective reach: fast incoming shots (smashes) get a generous defensive reach so they can always be blocked back
+  reachFor(p) {
+    const v = this.shuttle.v, sp = Math.hypot(v[0], v[1], v[2]);
+    return p.d.reach * (1 + 0.45 * THREE.MathUtils.clamp((sp - 11) / 10, 0, 1));
+  }
+
+  // closest point to `c` on the shuttle's path over the last tick
+  closestOnPath(c) {
+    const a = this.prevShuttle, b = this.shuttle.p;
+    const ab = [b[0] - a.x, b[1] - a.y, b[2] - a.z], ac = [c.x - a.x, c.y - a.y, c.z - a.z];
+    const l2 = ab[0] ** 2 + ab[1] ** 2 + ab[2] ** 2;
+    const t = l2 > 1e-9 ? THREE.MathUtils.clamp((ab[0] * ac[0] + ab[1] * ac[1] + ab[2] * ac[2]) / l2, 0, 1) : 1;
+    const at = [a.x + ab[0] * t, a.y + ab[1] * t, a.z + ab[2] * t];
+    return { d: Math.hypot(at[0] - c.x, at[1] - c.y, at[2] - c.z), at };
+  }
+
+  // is the shuttle (heading to this player's side) inside their racket's reach right now? (charge auto-release assist)
+  shuttleAtRacket(p) {
+    const sh = this.shuttle;
+    if (this.state !== "rally" || !sh.flying || sh.lastTeam === p.team) return false;
+    return this.closestOnPath(p.hitCenter()).d <= this.reachFor(p) * 0.95;
   }
 
   computeShot(p, aim, serving, closeness) {
@@ -262,12 +294,15 @@ export class Match {
     const a = Math.random() * Math.PI * 2, r = Math.random() * err;
     tx += Math.cos(a) * r; tz += Math.sin(a) * r;
     const drop = c === 0 && Math.abs(tx) < 3.2;
-    let speed = p.d.shot * (1 + 0.85 * c) * (smash ? 1.18 : 1) * (drop ? 0.72 : 1) * (serving ? 0.9 : 1);
+    // overall pace is ~10% slower than before, and a full smash tops out near 30 m/s (was ~40) so it can be returned
+    let speed = 0.9 * p.d.shot * (1 + 0.62 * c) * (smash ? 1.06 : 1) * (drop ? 0.72 : 1) * (serving ? 0.9 : 1);
     const lateral = tz - from[2];
     const sideSign = Math.sign(lateral * ox) || (Math.random() < 0.5 ? 1 : -1);
     const spin = serving ? 0 : -sideSign * p.d.spin * (0.35 + 0.65 * c) * Math.min(1, Math.abs(lateral) / 3 + 0.3);
     const top = smash ? 0.6 : 0;
-    const sol = solveShot(from, [tx, tz], speed, spin, top, { clear: smash ? 0.1 : 0.3 });
+    // a smash goes down: aim it at least 3 m past the net and never let it climb (it used to loop way up off-screen)
+    if (smash && Math.abs(tx) < 3) tx = 3 * ox;
+    const sol = solveShot(from, [tx, tz], speed, spin, top, smash ? { clear: 0.1, maxApex: from[1] + 0.6 } : { clear: 0.3 });
     return { by: p.id, team: p.team, p: from, v: sol.v, s: spin * Math.sqrt(sol.speedFrac || 1), t: top, kind: smash ? "smash" : drop ? "drop" : c > 0.4 ? "power" : serving ? "serve" : "hit", c, seq: ++this.hitSeq };
   }
 
@@ -331,8 +366,8 @@ export class Match {
   localInput(input) {
     const s = this.viewSide;
     let fwd = 0, right = 0;
-    if (input.down("KeyW")) fwd += 1; if (input.down("KeyS")) fwd -= 1;
-    if (input.down("KeyD")) right += 1; if (input.down("KeyA")) right -= 1;
+    if (input.act("forward")) fwd += 1; if (input.act("back")) fwd -= 1;
+    if (input.act("right")) right += 1; if (input.act("left")) right -= 1;
     // camera-relative, like Roblox: W walks where the camera looks
     const fx = Math.cos(this.cam.yaw), fz = Math.sin(this.cam.yaw);
     const mx = fx * fwd - fz * right, mz = fz * fwd + fx * right;
@@ -346,8 +381,8 @@ export class Match {
       }
     }
     return {
-      mx, mz, jump: input.pressed("Space"), dash: input.pressed("ShiftLeft") || input.pressed("ShiftRight"),
-      swing: input.mouse.down && input.enabled, aim: this.aim,
+      mx, mz, jump: input.actPressed("jump"), dash: input.actPressed("dash"),
+      swing: input.act("swing") || input.actPressed("swing"), tap: input.actPressed("swing"), assist: true, aim: this.aim,
       face: [fx, fz], // always face where the camera looks
     };
   }
@@ -361,8 +396,9 @@ export class Match {
     const v = new THREE.Vector3(...sh.v);
     if (v.lengthSq() > 0.5) this.shuttleObj.quaternion.slerp(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), v.normalize().negate()), 0.5);
     else this.shuttleObj.quaternion.slerp(new THREE.Quaternion(), 0.2);
-    this.blob.position.set(sp.x, 0.065, sp.z);
-    this.blob.scale.setScalar(1 + sp.y * 0.08); this.blob.material.opacity = Math.max(0.15, 0.5 - sp.y * 0.04);
+    this.blob.position.set(sp.x, 0.07, sp.z);
+    this.blob.visible = sh.flying || this.state === "serve";
+    this.blob.scale.setScalar(1 + Math.min(sp.y, 8) * 0.05);
     this.fx.update(dt, sp, sh.flying);
     this.env.update(dt);
 
@@ -395,6 +431,16 @@ export class Match {
     const sk = this.fx.shakeAmt;
     this.camera.position.copy(pos).add(new THREE.Vector3((Math.random() - 0.5) * sk, (Math.random() - 0.5) * sk, (Math.random() - 0.5) * sk));
     this.camera.lookAt(look2);
+
+    // shuttle off-screen (very high lob, or behind you): point at it from the screen edge
+    if (this.ui?.offscreen) {
+      this.camera.updateMatrixWorld();
+      const q = sp.clone().project(this.camera), behind = q.z > 1;
+      const off = sh.flying && (behind || Math.abs(q.x) > 0.95 || Math.abs(q.y) > 0.92);
+      let x = q.x, y = q.y; if (behind) { x = -x; y = -Math.abs(y) - 1; }
+      const k = Math.max(Math.abs(x) / 0.9, Math.abs(y) / 0.85, 1e-6);
+      this.ui.offscreen(off, x / k, y / k, Math.atan2(y, x), sp.y);
+    }
   }
 
   resize(w, h) { this.camera.aspect = w / h; this.camera.updateProjectionMatrix(); }

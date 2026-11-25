@@ -6,9 +6,13 @@ Do NOT modify `lele-io/cupidium-relay` or `lele-io/one-in-a-cupidium`.
 
 ## Commands
 - `npm run dev` (port 5173) · `npm run build` · `node tools/tune.mjs` (shot solver sanity check)
+- `node tools/apex-scan.mjs` (random shots: apex heights, smash flight times, solve cost; nothing may exceed `MAX_APEX` 7.5 m)
 - Models: run `blender/build_models.py` inside Blender (MCP `execute_blender_code`):
   `exec(open(r"C:/games/racket-game/blender/build_models.py").read()); build_all()` → writes `public/models/*.glb`.
   Builds each model in a scratch scene and deletes it; never touches the user's own scene.
+  Characters live in `blender/avatar.py` (exec'd by build_models): `skin_limb` (Skin-modifier arms/legs), `loft_profile`
+  (garments/hats from ring profiles), `make_hair_lock` (flat swept hair clumps), face strokes. Review with
+  `preview_grid([(outfit, hair, hat, face), ...])` → scene "avatar_preview" (delete it after). ~36k tris per character.
 
 ## Code map (src/)
 - `shuttle.js` pure flight model (gravity, quadratic drag, sidespin/topspin Magnus) + `solveShot` (aims a shot at a court
@@ -17,16 +21,20 @@ Do NOT modify `lele-io/cupidium-relay` or `lele-io/one-in-a-cupidium`.
 - Art style (owner asked: Zelda × Wuthering Waves × Silksong, indie): toon shading (all glTF materials → MeshToonMaterial
   with a 4-band ramp in assets.js), inverted-hull ink outlines (`outlineMaterial`), runtime palette overrides (`recolor`),
   warm grade + vignette pass. UI: chunky slanted Roblox-style buttons (Lilita One) + ink/gold filigree panels.
-- Controls: WASD (camera-relative), mouse look (always-locked camera via pointer lock, like Wuthering Waves; HOLD Alt frees the
+- Controls are rebindable (`keybinds.js`, saved in `profile.settings.keys`; title screen → Controls). Input reads actions via
+  `input.act(a)` / `input.actPressed(a)`; mouse buttons are "Mouse0/1/2". Defaults: WASD (camera-relative), mouse look (always-locked camera via pointer lock, like Wuthering Waves; HOLD Alt frees the
   cursor, click re-locks; falls back to normal clicks if lock is refused), crosshair aim (`CROSSHAIR_Y` in match.js must match
   CSS `.crosshair` top), click swing/hold charge (charges whenever held and the racket is ready), Space jump, Shift dash, wheel zoom.
 - Customization: `looks.js` (options/palettes/`normalizeLook`/`randomLook`), `assets.makeAvatar(look, teamColor)` clones the base
   avatar.glb + parts from avatar_parts.glb (roots `outfit_*`, `hair_*`, `hat_*`, `face_*`) and recolors materials Skin/Hair/Eye/
   Outfit1/Outfit2/HatMain/HatBand/Legs/Sleeve/Team. Saved as `profile.look`; sent in online room "hi"/roster. Bots get random looks.
   No named presets of other studios' characters (owner can build look-alikes from generic parts).
-- `player.js` kinematic capsule + Rapier character controller; swing state idle→charge→swing(0.17s window)→recover; dash
-  (air dash ×1.55 farther); arm animation by rotating `ArmR` (racket parented to `HandR`).
+- `player.js` kinematic capsule + Rapier character controller; swing state idle→charge→swing(0.17s window)→recover; a tap is
+  edge-detected and buffered 0.3 s through the recovery; holding auto-releases when the shuttle reaches the racket
+  (`match.shuttleAtRacket`). Dash (air dash ×1.12); arm animation by rotating `ArmR` (racket parented to `HandR`), legs pivot at the hip.
 - `match.js` Rapier world, serve/rally/point/over flow, rally scoring to 11 (win by 2, cap +4), hit → `computeShot` → `applyHit`.
+  Hits use a swept test over the last tick (`closestOnPath`) and `reachFor` (+45% reach vs fast shots, so smashes are returnable).
+  Bot skill comes from `opts.players[i].level` (Player itself doesn't store it). White ring under the shuttle; HUD arrow when off-screen.
   Team 0 plays x<0, team 1 x>0; the orbit camera starts behind the local player facing the net.
   `authority` (offline or host) decides points; `net` hooks send hit/point/serve/over.
 - `lobby.js` title-screen backdrop (Lobby view): shrine island, your avatar posing on the right, summon cutscene
@@ -44,6 +52,8 @@ Do NOT modify `lele-io/cupidium-relay` or `lele-io/one-in-a-cupidium`.
   `{k:"start", roster}`; bots fill empty seats and run on the host. Sync model: each client owns its player;
   hits are events (`base` = flight number; clash → lower id wins) and every client re-simulates the deterministic shuttle,
   fast-forwarding by ~RTT; host alone awards points/serves/game over. Host leaving ends the match; a leaving client becomes a bot.
+  End screen: REMATCH (host) re-sends `start` on the same connection; others "ask for rematch" (`k:"again"`). `conn` dispatches
+  to a copy of its handler set (a Session created inside a handler must not receive the message that created it).
   (Quick match/ranked were removed at the owner's request; the relay still supports `mm-*` queues but nothing uses them.)
 - `economy.js` Yen payouts (`payout`, every match pays), Shop (Spin ¥250, ×10 ¥2250, Lucky ¥1200, daily free Spin).
 - Meta shifts: edit `PATCH` in rackets.js (version, notes, per-racket stat `adjust`).

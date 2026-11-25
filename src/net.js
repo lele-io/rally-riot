@@ -14,8 +14,9 @@ export function connect(room, me) {
     close() { closed = true; clearInterval(keep); try { ws.close(1000); } catch (e) {} },
     get open() { return ws.readyState === 1; },
   };
-  ws.onmessage = (e) => { let m; try { m = JSON.parse(e.data); } catch (_) { return; } for (const h of handlers) h(m); };
-  ws.onclose = (e) => { clearInterval(keep); if (!closed) for (const h of handlers) h({ k: "closed", code: e.code }); };
+  // iterate a copy: a handler that registers another one (start → new Session) must not hand it the same message
+  ws.onmessage = (e) => { let m; try { m = JSON.parse(e.data); } catch (_) { return; } for (const h of [...handlers]) h(m); };
+  ws.onclose = (e) => { clearInterval(keep); if (!closed) for (const h of [...handlers]) h({ k: "closed", code: e.code }); };
   keep = setInterval(() => { if (ws.readyState === 1) ws.send("ping"); }, 25000); // relay auto-answers "pong"
   return conn;
 }
@@ -25,11 +26,15 @@ export class Session {
   constructor(conn, { me, hostId }) {
     this.conn = conn; this.me = me; this.hostId = hostId; this.isHost = me === hostId;
     this.rtt = 0.08; this.sendT = 0; this.pingT = 0; this.match = null;
+    this.left = new Set();      // ids that left the room (they become bots in a rematch)
+    this.pendingStart = null;   // a rematch "start" that arrived before our end screen was up
     this.off = conn.on((m) => this.onMessage(m));
   }
   send(msg, to) { this.conn.send(msg, to); }
   onMessage(m) {
     if (m.k === "ping" && this.isHost) { this.conn.send({ k: "pong", t: m.t }, m.from); return; }
+    if (m.k === "leave") this.left.add(m.id);
+    if (m.k === "start") { if (this.match?.state === "over") this.pendingStart = m; return; }
     if (m.k === "pong") { this.rtt = this.rtt * 0.7 + ((performance.now() - m.t) / 1000) * 0.3; return; }
     this.match?.onNet(m);
   }

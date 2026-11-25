@@ -16,7 +16,8 @@ import { normalizeLook, randomLook } from "./looks.js";
 import { RACKET, randomRacket } from "./rackets.js";
 import { profile, update } from "./save.js";
 import { audioUnlock, sfx } from "./sfx.js";
-import { privateTab } from "./online.js";
+import { privateTab, rematchBox } from "./online.js";
+import { ACTIONS, binds, setBind, resetBinds, keyName } from "./keybinds.js";
 import { openShop, matchRewards } from "./economy.js";
 
 const BOT_NAMES = ["Shuttlebug", "Netrunner", "Lobzilla", "Dropkick", "Feathers", "Smashley", "Rallycat", "Birdie Sanders", "Topspinner", "Clearwater", "Backhand Bo", "Kit Kourt"];
@@ -125,7 +126,9 @@ class Game {
         h("div", { class: "tbtns" },
           big("go", "play", "PLAY", "play"),
           big("friends", "friends", "PLAY WITH FRIENDS", "friends"),
-          h("button", { class: "howto", onclick: () => { sfx.ui(); this.openMenu("howto"); } }, icon("help"), h("u", {}, "How to play")))),
+          h("div", { class: "howlinks" },
+            h("button", { class: "howto", onclick: () => { sfx.ui(); this.openMenu("howto"); } }, icon("help"), h("u", {}, "How to play")),
+            h("button", { class: "howto", style: "margin-left:0", onclick: () => { sfx.ui(); this.openMenu("controls"); } }, icon("loadout"), h("u", {}, "Controls"))))),
       h("div", { class: "bottombar" },
         small("shop", "shop", "SHOP", "shop"),
         small("summon", "summon", "SUMMON", "summon"),
@@ -160,6 +163,7 @@ class Game {
     else if (id === "shop") pn = openShop(this.ui, () => this.drawTopbar());
     else if (id === "howto") pn = panel(this.ui, "How to play", null, howTo());
     else if (id === "customize") pn = openCustomize(this.ui, L, () => {});
+    else if (id === "controls") pn = panel(this.ui, "Controls", () => { this.input.capture = null; }, controls(this.input));
     pn.wrap.classList.add("panel-" + id);
     const c = pn.close;
     pn.close = () => { c(); L.menuOpen = false; this.ui.classList.remove("panel-open"); if (this.menu === pn) this.menu = null; };
@@ -204,23 +208,59 @@ class Game {
         h("div", { class: "final" }, `${r.score[0]} — ${r.score[1]}`),
         h("div", { class: "chips" }, h("span", { class: "chip" }, `Hits ${r.stats.hits}`), h("span", { class: "chip" }, `Smashes ${r.stats.smashes}`), h("span", { class: "chip" }, `Longest rally ${r.stats.longest}`)),
         reward,
+        cfg.type === "online" && !r.aborted ? rematchBox(this, cfg) : null,
         h("div", { class: "row" },
           cfg.type === "casual" ? h("button", { class: "btn hot", onclick: () => this.startMatch(cfg) }, "PLAY AGAIN") : null,
           h("button", { class: "btn", onclick: () => { cfg.net?.close?.(); this.goTitle(); } }, "MENU")))));
   }
 }
 
+// rebind screen: click a key box, then press any key or mouse button (Esc cancels)
+function controls(input) {
+  const grid = h("div", { class: "binds" });
+  let waiting = null;
+  const draw = () => {
+    grid.innerHTML = "";
+    const b = binds();
+    for (const [a, label] of ACTIONS) {
+      const cap = h("button", { class: "keycap" + (waiting === a ? " wait" : "") }, waiting === a ? "PRESS A KEY…" : keyName(b[a]));
+      cap.onclick = (e) => { e.stopPropagation(); sfx.ui(); listen(a); };
+      grid.append(h("span", {}, label), cap);
+    }
+  };
+  const listen = (a) => {
+    waiting = a; draw();
+    // wait a moment so the click that opened this doesn't bind itself
+    setTimeout(() => {
+      input.capture = (code) => {
+        input.capture = null; waiting = null;
+        if (code !== "Escape") { setBind(a, code); sfx.ui(); }
+        draw();
+      };
+    }, 60);
+  };
+  draw();
+  return h("div", { class: "col", style: "gap:12px" },
+    h("div", { class: "muted" }, "Click a box, then press a key or mouse button. Esc cancels. Taken keys swap."),
+    grid,
+    h("div", { class: "row", style: "justify-content:flex-start" }, h("button", { class: "btn", onclick: () => { resetBinds(); sfx.ui(); draw(); } }, "RESET TO DEFAULTS")),
+    h("div", { class: "muted", style: "font-size:12px" }, "Mouse look and wheel zoom are fixed."));
+}
+
 function howTo() {
   const k = (keys, text) => h("div", { class: "howrow" }, h("span", { class: "keycap" }, keys), h("span", {}, text));
+  const b = binds(), n = keyName;
   return h("div", { class: "col", style: "gap:10px" },
-    h("div", { class: "lbl" }, "Controls"),
-    k("W A S D", "Move (relative to the camera)"), k("SPACE", "Jump"), k("CLICK", "Swing — hold to charge a power swing, release to hit"),
-    k("SHIFT", "Dash — goes even farther in mid-air"), k("MOUSE", "Look around — the crosshair aims; the ring on the far court is where your shot lands"),
-    k("HOLD ALT", "Free your mouse cursor (let go to lock the camera again)"), k("WHEEL", "Zoom in / out"),
+    h("div", { class: "lbl" }, "Controls (change them under Controls on the title screen)"),
+    k([b.forward, b.left, b.back, b.right].map(n).join(" "), "Move (relative to the camera)"), k(n(b.jump), "Jump"),
+    k(n(b.swing), "Swing — tap to hit, hold to charge a power swing (it swings by itself when the shuttle reaches you)"),
+    k(n(b.dash), "Dash — a bit farther in mid-air"), k("MOUSE", "Look around — the crosshair aims; the ring on the far court is where your shot lands"),
+    k("HOLD " + n(b.cursor), "Free your mouse cursor (let go to lock the camera again)"), k("WHEEL", "Zoom in / out"),
     h("div", { class: "lbl", style: "margin-top:8px" }, "Tips"),
     h("ul", { class: "notes" },
       h("li", {}, "Stand near the middle of your half so you can reach anything."),
-      h("li", {}, "Dash to get to the shuttle in time — jump + dash covers huge distances."),
+      h("li", {}, "The white circle on the ground is right under the shuttle."),
+      h("li", {}, "Dash to get to the shuttle in time."),
       h("li", {}, "Jump and charge a power swing on high shuttles for a SMASH."),
       h("li", {}, "Tap-swing short to the net for a soft drop shot."),
       h("li", {}, "In 2v2 / 3v3, spread out with your team to cover the whole court."),
