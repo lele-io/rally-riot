@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { RACKET } from "./rackets.js";
-import { normalizeLook, HATS_COVER_HAIR } from "./looks.js";
+import { normalizeLook, HATS_COVER_HAIR, OUTFIT_FIT } from "./looks.js";
 
 const NAMES = ["court", "lobby", "backdrop", "avatar", "avatar_parts", "shuttle", "racket_round", "racket_blade", "racket_wing"];
 const models = {};
@@ -84,8 +84,8 @@ export async function loadAssets(onProgress) {
   models.backdrop.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; } });
   // ink lines on characters, gear and the bigger props
   // (small face strokes and trims stay outline-free: an ink hull would turn them into blobs)
-  addOutlines(models.avatar, (o) => /Eye|Shine|Lash|Brow|Mouth|Nose|EarInner|Lace/.test(o.name));
-  addOutlines(models.avatar_parts, (o) => /Scar|Stitch|Blush|Halo|EarInner|Jewel|Flower|Details|Button|Aglet|Zip|Buckle|ClaspGem|Glass|Pocket|Knot|Tie/.test(o.name) || o.parent?.name === "face_glasses");
+  addOutlines(models.avatar, (o) => /Nose|EarInner|Lace|Cuff/.test(o.name));
+  addOutlines(models.avatar_parts, (o) => /Eye|Shine|Lash|Lid|Brow|Mouth|Teeth|Scar|Stitch|Blush|Freckle|Bandaid|EyeBlack|Halo|EarInner|Jewel|Details|Button|Aglet|Zip|Buckle|ClaspGem|Glass|Pocket|Knot|Tie|Logo|Seam|Stripe|Placket|Neckline|Waistband|Hem|Wristband|Pendant|Chain|Shades/.test(o.name));
   addOutlines(models.shuttle);
   for (const r of ["racket_round", "racket_blade", "racket_wing"]) addOutlines(models[r], (o) => /Strings/.test(o.name));
   for (const n of ["court", "lobby"]) addOutlines(models[n], (o) => flat.test(o.name) || /tile|tuft|Banner/i.test(o.name) || o.material.emissiveIntensity > 1.5);
@@ -108,28 +108,53 @@ function cloneWith(name, tint = {}) {
 
 export const getModel = (name) => cloneWith(name);
 
-// Build a character: base body + the chosen hair / outfit / hat / face parts, recolored from the look.
+// Build a character: base body + the chosen parts (outfit, hair, face pieces, accessory slots), recolored from the look.
+// Parts whose node name ends in _ArmL/_ArmR/_LegL/_LegR (shorts legs, wristbands, jogger cuffs) are re-parented onto that limb
+// so they follow the swing / run animation.
+const BUILD_K = { slim: 0.88, athletic: 1, strong: 1.13 };
 export function makeAvatar(look, teamColor) {
   const L = normalizeLook(look);
   const root = models.avatar.clone(true);
   const add = (name) => { const src = models.avatar_parts.getObjectByName(name); if (src) root.add(src.clone(true)); return src; };
   add("outfit_" + L.outfit); add("hair_" + L.hair);
+  add("eyes_" + L.eyeStyle); add("brows_" + L.brows); add("mouth_" + L.mouth);
   if (L.hat !== "none") add("hat_" + L.hat);
   if (L.face !== "none") add("face_" + L.face);
+  if (L.eyewear !== "none") add("eyewear_" + L.eyewear);
+  if (L.neck !== "none") add("neck_" + L.neck);
+  if (L.wrist !== "none") add("wrist_" + L.wrist);
+  root.updateMatrixWorld(true);
+  const limbParts = [];
+  root.traverse((o) => { const m = /_(ArmL|ArmR|LegL|LegR)\d*$/.exec(o.name); if (m && !o.userData.outline) limbParts.push([o, m[1]]); });
+  for (const [o, limb] of limbParts) root.getObjectByName(limb)?.attach(o);
   if (HATS_COVER_HAIR.has(L.hat)) root.traverse((o) => { if (/^Tuft/.test(o.name)) o.visible = false; });
-  const bare = L.outfit === "vest";
-  const legs = { cloak: "#2b2033", vest: L.skin, gown: L.c1, jacket: L.c2 }[L.outfit];
-  const colors = { Skin: L.skin, Hair: L.hairColor, Eye: L.eyes, Outfit1: L.c1, Outfit2: L.c2, HatMain: L.hatColor, HatBand: L.hatBand,
-    Team: teamColor, Legs: legs, Sleeve: bare ? L.skin : L.c1, Cuff: L.c2 };
-  if (bare) root.traverse((o) => { if (/^Cuff/.test(o.name)) o.visible = false; }); // bare arms: no sleeve cuffs
+
+  const fit = OUTFIT_FIT[L.outfit] || OUTFIT_FIT.tee;
+  const legs = fit.legs === "skin" ? L.skin : L[fit.legs] || fit.legs;
+  const colors = { Skin: L.skin, Hair: L.hairColor, Eye: L.eyes, Outfit1: L.c1, Outfit2: L.c2, HatMain: L.hatColor, HatBand: L.hatBand, Team: teamColor,
+    Legs: legs, Legs2: legs, Sleeve: fit.sleeve === "none" ? L.skin : L.c1, Sleeve2: fit.sleeve === "long" ? L.c1 : L.skin, Cuff: L.c2 };
+  root.traverse((o) => {
+    if (/^CuffShort/.test(o.name)) o.visible = fit.sleeve === "short";
+    else if (/^Cuff/.test(o.name)) o.visible = !!fit.cuff;
+  });
   const cache = {};
   root.traverse((m) => {
     if (!m.isMesh || m.userData.outline) return;
     const n = m.material.name, c = colors[n];
     if (c == null) return;
-    m.material = cache[n] || (cache[n] = Object.assign(m.material.clone(), {}));
+    m.material = cache[n] || (cache[n] = m.material.clone());
     m.material.color.set(c);
   });
+  // build: thicker / thinner limbs and torso (the head stays the same; the racket hand is counter-scaled)
+  const k = BUILD_K[L.build] || 1;
+  if (k !== 1) {
+    for (const n of ["ArmL", "ArmR", "LegL", "LegR"]) root.getObjectByName(n)?.scale.set(k, 1, k);
+    for (const n of ["HandL", "HandR"]) root.getObjectByName(n)?.scale.set(1 / k, 1, 1 / k);
+    const kt = 1 + (k - 1) * 0.8;
+    root.getObjectByName("outfit_" + L.outfit)?.scale.set(kt, 1, kt);
+    root.getObjectByName("Neck")?.scale.set(kt, 1, kt);
+    for (const n of ["neck_" + L.neck]) root.getObjectByName(n)?.scale.set(kt, 1, kt);
+  }
   root.userData.look = L;
   return root;
 }

@@ -43,6 +43,10 @@ export class Player {
     this.feet = [this.avatar.getObjectByName("FootL"), this.avatar.getObjectByName("FootR")];
     this.hand = this.avatar.getObjectByName("HandR");
     this.attachRacket();
+    // team ring on the floor (the scarf is optional now, so this is what always shows the team)
+    this.teamRing = new THREE.Mesh(new THREE.RingGeometry(0.4, 0.5, 40),
+      new THREE.MeshBasicMaterial({ color: TEAM_COLORS[team], transparent: true, opacity: 0.8, depthWrite: false, toneMapped: false }));
+    this.teamRing.rotation.x = -Math.PI / 2; this.teamRing.renderOrder = 4; this.root.add(this.teamRing);
     match.scene.add(this.root);
   }
 
@@ -171,6 +175,7 @@ export class Player {
   render(dt, alpha) {
     const p = this.prevPos.clone().lerp(this.pos, alpha);
     this.root.position.copy(p);
+    this.teamRing.position.y = 0.072 - p.y; // stays on the floor while jumping
     this.root.rotation.y = Math.atan2(this.facing.x, this.facing.z);
     const speed = Math.hypot(this.pos.x - this.prevPos.x, this.pos.z - this.prevPos.z) / (1 / 60);
     this.animT += dt * (4 + speed * 1.6);

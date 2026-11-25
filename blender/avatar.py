@@ -17,16 +17,15 @@ from mathutils import Vector
 # ---------------------------------------------------------------- tweakables
 H = 1.38                          # head centre height
 HEAD_R, HEAD_SCALE = 0.27, (1.0, 0.95, 0.92)
-SHOULDER = (0.215, 0.0, 1.0)      # arm pivot (x mirrored)
-HIP = (0.1, 0.0, 0.5)             # leg pivot (x mirrored)
+SHOULDER = (0.245, 0.0, 1.0)      # arm pivot (x mirrored) — broad, sporty shoulders
+HIP = (0.105, 0.0, 0.5)           # leg pivot (x mirrored)
 HAND_Z = -0.44                    # HandR empty below the shoulder (racket grip)
 HC, HR = Vector((0, 0.012, H + 0.03)), 0.288   # hair shell: centre / radius (sits just off the scalp)
 LIMB_SUB, CLOTH_SUB = 2, 1        # subdivision levels
 HAIR_RES, HAIR_BEV = 4, 3         # lock smoothness: samples per control-point span / (unused) bevel steps
-TORSO = [  # (z, rx, ry) chibi torso: hips, waist, chest, shoulders, neck
-    (0.44, 0.165, 0.125), (0.52, 0.172, 0.13), (0.62, 0.148, 0.112), (0.72, 0.15, 0.114),
-    (0.84, 0.168, 0.122), (0.93, 0.182, 0.124), (0.99, 0.17, 0.114), (1.035, 0.125, 0.092), (1.075, 0.072, 0.068)]
-
+TORSO = [  # (z, rx, ry) athletic chibi torso: hips, waist, ribcage, chest, shoulders, neck (V-shape, not a bodybuilder)
+    (0.44, 0.17, 0.13), (0.52, 0.176, 0.132), (0.62, 0.158, 0.118), (0.72, 0.17, 0.126),
+    (0.84, 0.198, 0.14), (0.93, 0.216, 0.142), (0.99, 0.2, 0.128), (1.035, 0.14, 0.1), (1.075, 0.076, 0.072)]
 
 # ---------------------------------------------------------------- helpers
 def _link(ob):
@@ -225,14 +224,18 @@ def avatar_mats():
         team=mat("Team", (0.2, 0.5, 1.0), rough=0.7), skin=mat("Skin", (1.0, 0.86, 0.74), rough=0.7),
         hair=mat("Hair", (0.2, 0.15, 0.24), rough=0.6), eye=mat("Eye", (0.1, 0.09, 0.13), rough=0.4),
         shine=mat("EyeShine", (1, 1, 1), emit=1.0), legs=mat("Legs", (0.1, 0.09, 0.13), rough=0.6),
+        legs2=mat("Legs2", (0.1, 0.09, 0.13), rough=0.6), sock=mat("Sock", (0.97, 0.96, 0.94), rough=0.9),
         boot=mat("Boot", (0.36, 0.25, 0.2), rough=0.7), sole=mat("Sole", (0.93, 0.89, 0.8), rough=0.8),
-        sleeve=mat("Sleeve", (0.94, 0.9, 0.8), rough=0.8), cuff=mat("Cuff", (0.2, 0.5, 1.0), rough=0.7),
+        sleeve=mat("Sleeve", (0.94, 0.9, 0.8), rough=0.8), sleeve2=mat("Sleeve2", (0.94, 0.9, 0.8), rough=0.8),
+        cuff=mat("Cuff", (0.2, 0.5, 1.0), rough=0.7),
         o1=mat("Outfit1", (0.94, 0.9, 0.8), rough=0.8), o2=mat("Outfit2", (0.2, 0.5, 1.0), rough=0.7),
         gold=mat("Gold", (0.95, 0.74, 0.36), metal=0.6, rough=0.3), hatm=mat("HatMain", (0.95, 0.8, 0.45), rough=0.8),
         hatb=mat("HatBand", (0.85, 0.2, 0.22), rough=0.7), halo=mat("Halo", (1.0, 0.9, 0.55), emit=3.0),
         scar=mat("Scar", (0.62, 0.3, 0.3), rough=0.6), blush=mat("Blush", (1.0, 0.55, 0.6), rough=0.8),
         ink=mat("Ink", (0.12, 0.1, 0.15), rough=0.5), mouth=mat("Mouth", (0.55, 0.2, 0.25), rough=0.6),
-        inner=mat("EarInner", (1.0, 0.68, 0.72), rough=0.8),
+        inner=mat("EarInner", (1.0, 0.68, 0.72), rough=0.8), teeth=mat("Teeth", (1.0, 0.99, 0.97), rough=0.5),
+        freckle=mat("Freckle", (0.72, 0.42, 0.3), rough=0.8), bandaid=mat("Bandaid", (0.96, 0.78, 0.6), rough=0.8),
+        lens=mat("Lens", (0.08, 0.1, 0.16), metal=0.4, rough=0.15), towel=mat("Towel", (0.97, 0.96, 0.93), rough=0.95),
     )
 
 
@@ -251,9 +254,9 @@ def make_head(M, name="Head"):
         x, y, z = v.co.x * HEAD_SCALE[0], v.co.y * HEAD_SCALE[1], v.co.z * HEAD_SCALE[2]
         if z < 0.02 and y < 0.05:        # chubby cheeks
             f = math.sin(min(1.0, (0.02 - z) / 0.2) * math.pi) * min(1.0, (0.05 - y) / 0.2)
-            x *= 1 + 0.07 * f
+            x *= 1 + 0.035 * f
         if z < -0.12 and y < 0:          # soft little chin
-            y -= 0.012 * min(1.0, (-0.12 - z) / 0.1)
+            y -= 0.018 * min(1.0, (-0.12 - z) / 0.1)
         if y > 0.05: y *= 1.03           # rounder back of the skull
         v.co = Vector((x, y, z))
     ob = _mesh_obj(name, bm, M["skin"]); ob.location = (0, 0, H)
@@ -262,81 +265,146 @@ def make_head(M, name="Head"):
 
 
 def make_face(M, head):
-    """ears, nose, eyes (lids + lashes + shines), brows, mouth -> list of objects"""
+    """ears + nose (always there). Eyes, brows and mouth are parts: build_eyes / build_brows / build_mouth"""
     out = []
     for sx in (-1, 1):
-        # ear: flattened shell with an inner dish
         ear = loft_profile("Ear", [(-0.05, 0.004, 0.01), (-0.035, 0.022, 0.03), (0.0, 0.03, 0.045), (0.035, 0.026, 0.038), (0.055, 0.008, 0.012)],
                            segs=12, mat=M["skin"], cap_top=True, cap_bottom=True, subsurf=1)
         for v in ear.data.vertices: v.co.x *= 0.55
         ear.location = (sx * 0.262, 0.02, H - 0.025); ear.rotation_euler = (0.1, 0, sx * -0.35)
         out.append(ear)
-        inner = ico_s("EarInner", 1, (sx * 0.27, 0.012, H - 0.025), M["inner"], 2, scale=(0.006, 0.018, 0.03), rot=(0.1, 0, sx * -0.35))
-        out.append(inner)
-    out.append(ico_s("Nose", 0.016, on_head(0, -0.075, -0.006), M["skin"], 2, scale=(1.0, 0.75, 0.8)))
-    for sx in (-1, 1):
-        ex, ez = sx * 0.096, -0.012
-        c = on_head(ex, ez, -0.012)
-        yaw = sx * math.atan2(abs(ex), -head_y(ex, ez)) * 0.9
-        out.append(ico_s("Eye", 1, c, M["eye"], 3, scale=(0.043, 0.02, 0.06), rot=(0.08, 0, yaw)))
-        out.append(ico_s("EyeShine", 1, on_head(ex - sx * 0.014 + 0.0, ez + 0.022, 0.004), M["shine"], 2, scale=(0.012, 0.006, 0.015), rot=(0, 0, yaw)))
-        out.append(ico_s("EyeShine", 1, on_head(ex + sx * 0.014, ez - 0.026, 0.003), M["shine"], 1, scale=(0.006, 0.004, 0.006), rot=(0, 0, yaw)))
-        # upper lid + lash line: an arc over the eye that thickens to a little flick at the outer corner
-        lid = []
-        for k in range(6):
-            a = math.radians(150 - k * 25)                    # upper lid only (150 deg .. 25 deg)
-            lid.append(on_head(ex + sx * 0.05 * math.cos(a), ez + 0.06 * math.sin(a) + 0.006, 0.016))  # inner corner -> outer
-        lid.append(on_head(ex + sx * 0.068, ez + 0.042, 0.014))   # outer flick
-        out.append(stroke("Lash", lid, 0.0095, M["ink"], lambda t: 0.45 + 0.75 * t))
-        # eyebrow: soft arch, thicker at the inner end
-        brow = [on_head(ex + sx * d, ez + 0.1 + 0.014 * math.sin((d + 0.04) / 0.09 * math.pi), 0.006) for d in (-0.035, -0.01, 0.015, 0.04)]
-        out.append(shrink_onto(stroke("Brow", brow, 0.011, M["hair"], lambda t: 1.0 - 0.55 * t), head, 0.003))
-    mouth = [on_head(x, -0.118 - 0.012 * (1 - (x / 0.032) ** 2), 0.004) for x in (-0.032, -0.016, 0.0, 0.016, 0.032)]
-    out.append(shrink_onto(stroke("Mouth", mouth, 0.0055, M["mouth"], lambda t: 0.6 + 0.4 * math.sin(t * math.pi)), head, 0.002))
-    for nm in ("Lash", "Brow", "Mouth"):
-        cs = [o for o in out if o.type == "CURVE" and o.name.startswith(nm)]
-        rest = [o for o in out if o not in cs]
-        out = rest + [to_mesh(cs, nm)]
+        out.append(ico_s("EarInner", 1, (sx * 0.27, 0.012, H - 0.025), M["inner"], 2, scale=(0.006, 0.018, 0.03), rot=(0.1, 0, sx * -0.35)))
+    out.append(ico_s("Nose", 0.017, on_head(0, -0.072, -0.006), M["skin"], 2, scale=(0.95, 0.8, 0.9)))
     return out
+
+
+EYE_X, EYE_Z = 0.096, -0.012
+
+
+def _strokes_to_mesh(objs, names):
+    for nm in names:
+        cs = [o for o in objs if o.type == "CURVE" and o.name.startswith(nm)]
+        if not cs: continue
+        rest = [o for o in objs if o not in cs]
+        objs = rest + [to_mesh(cs, nm)]
+    return objs
+
+
+def build_eyes(M, style, head):
+    """round: big glossy anime eyes + lashes with a flick. sharp: almond, tilted, bold lid. narrow: calm half-lidded.
+    fierce: tilted hard, heavy angled lid. Each: Eye (recolored) + EyeShine + Lash (lid line)."""
+    out = []
+    cfg = {"round": dict(sc=(0.043, 0.02, 0.06), tilt=0.0, shines=2),
+           "sharp": dict(sc=(0.044, 0.02, 0.043), tilt=0.22, shines=1),
+           "narrow": dict(sc=(0.043, 0.02, 0.03), tilt=0.08, shines=1),
+           "fierce": dict(sc=(0.042, 0.02, 0.038), tilt=0.38, shines=1)}[style]
+    for sx in (-1, 1):
+        ex, ez = sx * EYE_X, EYE_Z
+        yaw = sx * math.atan2(abs(ex), -head_y(ex, ez)) * 0.9
+        tilt = -sx * cfg["tilt"]                      # outer corner up
+        out.append(ico_s("Eye", 1, on_head(ex, ez, -0.012), M["eye"], 3, scale=cfg["sc"], rot=(0.08, tilt, yaw)))
+        hz = cfg["sc"][2]
+        out.append(ico_s("EyeShine", 1, on_head(ex - sx * 0.013, ez + hz * 0.38, 0.004), M["shine"], 2,
+                         scale=(0.011, 0.006, min(0.015, hz * 0.3)), rot=(0, 0, yaw)))
+        if cfg["shines"] > 1:
+            out.append(ico_s("EyeShine", 1, on_head(ex + sx * 0.014, ez - 0.026, 0.003), M["shine"], 1, scale=(0.006, 0.004, 0.006), rot=(0, 0, yaw)))
+        if style == "round":
+            lid = [on_head(ex + sx * 0.05 * math.cos(math.radians(150 - k * 25)), ez + 0.06 * math.sin(math.radians(150 - k * 25)) + 0.006, 0.016) for k in range(6)]
+            lid.append(on_head(ex + sx * 0.068, ez + 0.042, 0.014))
+            out.append(stroke("Lash", lid, 0.0095, M["ink"], lambda t: 0.45 + 0.75 * t))
+        else:
+            # a bold, nearly straight upper lid that follows the tilt (inner end lower = sharper look)
+            rise = {"sharp": 0.016, "narrow": 0.004, "fierce": 0.026}[style]
+            top = hz * 0.95 + 0.004
+            lid = [on_head(ex + sx * d, ez + top + rise * (d / 0.05) - (0.006 * (1 - (d / 0.05) ** 2) if style == "narrow" else 0.0), 0.016)
+                   for d in (-0.048, -0.02, 0.01, 0.04, 0.055)]
+            out.append(stroke("Lash", lid, 0.011 if style != "narrow" else 0.012, M["ink"], lambda t: 0.75 + 0.35 * t))
+            if style == "narrow":   # heavy upper lid in skin tone over the top of the eye
+                out.append(ico_s("Lid", 1, on_head(ex, ez + hz * 0.6, -0.006), M["skin"], 2, scale=(0.05, 0.022, 0.022), rot=(0.08, tilt, yaw)))
+    return _strokes_to_mesh(out, ("Lash",))
+
+
+def build_brows(M, style, head):
+    out = []
+    for sx in (-1, 1):
+        ex, ez = sx * EYE_X, EYE_Z
+        if style == "soft":
+            pts = [on_head(ex + sx * d, ez + 0.1 + 0.014 * math.sin((d + 0.04) / 0.09 * math.pi), 0.006) for d in (-0.035, -0.01, 0.015, 0.04)]
+            out.append(stroke("Brow", pts, 0.011, M["hair"], lambda t: 1.0 - 0.55 * t))
+        elif style == "thick":
+            pts = [on_head(ex + sx * d, ez + 0.092 + 0.006 * math.sin((d + 0.045) / 0.1 * math.pi), 0.007) for d in (-0.045, -0.015, 0.015, 0.045)]
+            out.append(stroke("Brow", pts, 0.017, M["hair"], lambda t: 1.0 - 0.3 * t))
+        elif style == "angry":
+            pts = [on_head(ex + sx * d, ez + 0.08 + 0.32 * (d + 0.045) - 0.004 * math.sin((d + 0.045) / 0.09 * math.pi), 0.007) for d in (-0.045, -0.015, 0.015, 0.042)]
+            out.append(stroke("Brow", pts, 0.016, M["hair"], lambda t: 1.0 - 0.35 * t))
+        elif style == "raised":
+            pts = [on_head(ex + sx * d, ez + 0.112 + 0.022 * math.sin((d + 0.04) / 0.085 * math.pi), 0.006) for d in (-0.035, -0.01, 0.015, 0.04)]
+            out.append(stroke("Brow", pts, 0.012, M["hair"], lambda t: 1.0 - 0.5 * t))
+    out = [shrink_onto(o, head, 0.003) for o in out]
+    return _strokes_to_mesh(out, ("Brow",))
+
+
+def build_mouth(M, style, head):
+    out = []
+    if style == "smile":
+        pts = [on_head(x, -0.118 - 0.012 * (1 - (x / 0.032) ** 2), 0.004) for x in (-0.032, -0.016, 0.0, 0.016, 0.032)]
+        out.append(stroke("Mouth", pts, 0.0055, M["mouth"], lambda t: 0.6 + 0.4 * math.sin(t * math.pi)))
+    elif style == "neutral":
+        pts = [on_head(x, -0.122 + 0.002 * (x / 0.022) ** 2, 0.004) for x in (-0.022, 0.0, 0.022)]
+        out.append(stroke("Mouth", pts, 0.0055, M["mouth"]))
+    elif style == "smirk":
+        pts = [on_head(x, -0.124 + 0.3 * max(0.0, x) ** 1.6 * 8 + 0.0, 0.004) for x in (-0.024, -0.006, 0.012, 0.03)]
+        out.append(stroke("Mouth", pts, 0.0055, M["mouth"], lambda t: 0.7 + 0.3 * t))
+    elif style == "grin":   # open, cheering mouth with a row of teeth
+        out.append(ico_s("Mouth", 1, on_head(0, -0.124, -0.004), M["mouth"], 2, scale=(0.038, 0.012, 0.026)))
+        out.append(ico_s("Teeth", 1, on_head(0, -0.108, -0.001), M["teeth"], 2, scale=(0.03, 0.008, 0.008)))
+    out = [shrink_onto(o, head, 0.002) if o.type == "CURVE" else o for o in out]
+    return _strokes_to_mesh(out, ("Mouth",))
 
 
 # ---------------------------------------------------------------- base body
 def make_arm(M, sx, nm):
-    pts = [((0, 0, 0), 0.066), ((0, -0.004, -0.1), 0.056), ((0, -0.008, -0.2), 0.047), ((0, -0.004, -0.29), 0.042),
-           ((0, 0, -0.36), 0.036), ((0, 0, -0.41), (0.034, 0.05)), ((0, 0, -0.475), (0.03, 0.042)),
-           ((-sx * 0.008, -0.034, -0.385), 0.021), ((-sx * 0.012, -0.056, -0.425), 0.017)]
-    edges = [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (4, 7), (7, 8)]
+    # deltoid, bicep, elbow, forearm bulge, wrist, mitten hand + thumb (sporty, not bulky)
+    pts = [((0, 0, 0), 0.076), ((0, -0.004, -0.065), 0.071), ((0, -0.012, -0.125), (0.068, 0.074)), ((0, -0.004, -0.2), 0.053),
+           ((0, -0.006, -0.25), 0.058), ((0, 0, -0.345), 0.041), ((0, 0, -0.4), (0.037, 0.055)), ((0, 0, -0.47), (0.033, 0.047)),
+           ((-sx * 0.008, -0.036, -0.38), 0.023), ((-sx * 0.012, -0.06, -0.42), 0.018)]
+    edges = [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (5, 8), (8, 9)]
     arm = apply_mods(skin_limb("Arm" + nm, pts, edges, None, loc=(sx * SHOULDER[0], SHOULDER[1], SHOULDER[2])))
-    me = arm.data; me.materials.append(M["sleeve"]); me.materials.append(M["skin"])
-    for p in me.polygons: p.material_index = 0 if p.center.z > -0.305 else 1
+    me = arm.data
+    for m in (M["sleeve"], M["sleeve2"], M["skin"]): me.materials.append(m)
+    # zones: upper arm (short sleeve) / forearm (long sleeve) / hand. The game colors them per outfit.
+    for p in me.polygons: p.material_index = 0 if p.center.z > -0.15 else (1 if p.center.z > -0.33 else 2)
     smooth(arm)
-    cuff = loft_profile("Cuff", [(-0.275, 0.05, 0.05), (-0.295, 0.058, 0.058), (-0.315, 0.06, 0.06)], segs=16, mat=M["cuff"],
-                        solidify=0.012, subsurf=1)
-    cuff.location = arm.location; apply_mods(cuff); parent_keep(cuff, arm)
+    for nm2, z0, r in (("CuffShort", -0.135, 0.079), ("Cuff", -0.31, 0.05)):
+        c = loft_profile(nm2, [(z0, r, r), (z0 - 0.025, r * 1.02, r * 1.02)], segs=18, mat=M["cuff"], solidify=0.01, subsurf=1)
+        c.location = arm.location; apply_mods(c); parent_keep(c, arm)
     hand = _link(bpy.data.objects.new("Hand" + nm, None)); hand.location = (arm.location.x, 0, SHOULDER[2] + HAND_Z)
     parent_keep(hand, arm)
     return arm
 
 
 def make_leg(M, sx, nm):
-    pts = [((0, 0, 0), 0.078), ((0, 0, -0.1), 0.068), ((0, -0.01, -0.2), 0.052), ((0, 0.004, -0.28), 0.056), ((0, 0, -0.38), 0.042)]
-    leg = apply_mods(skin_limb("Leg" + nm, pts, [(0, 1), (1, 2), (2, 3), (3, 4)], M["legs"], loc=(sx * HIP[0], 0, HIP[2])))
+    # thigh, knee, calf muscle, ankle
+    pts = [((0, 0, 0), 0.094), ((0, -0.006, -0.09), 0.088), ((0, -0.012, -0.17), 0.068), ((0, -0.012, -0.21), 0.06),
+           ((0, 0.012, -0.27), 0.068), ((0, 0.006, -0.33), 0.054), ((0, 0, -0.385), 0.046)]
+    leg = apply_mods(skin_limb("Leg" + nm, pts, [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6)], None, loc=(sx * HIP[0], 0, HIP[2])))
+    me = leg.data; me.materials.append(M["legs"]); me.materials.append(M["legs2"])
+    for p in me.polygons: p.material_index = 0 if p.center.z > -0.19 else 1     # thigh / lower leg
     smooth(leg)
     x = sx * HIP[0]
-    sole = loft_profile("Sole", [(0.0, 0.058, 0.13, x, -0.035), (0.028, 0.062, 0.135, x, -0.037)], segs=20, mat=M["sole"],
+    sole = loft_profile("Sole", [(0.0, 0.06, 0.135, x, -0.035), (0.03, 0.064, 0.14, x, -0.037)], segs=20, mat=M["sole"],
                         cap_top=True, cap_bottom=True, subsurf=1)
-    shoe = loft_profile("Shoe", [(0.022, 0.058, 0.128, x, -0.036), (0.06, 0.062, 0.13, x, -0.04), (0.095, 0.055, 0.105, x, -0.025),
-                                 (0.125, 0.046, 0.06, x, -0.002), (0.15, 0.044, 0.048, x, 0.004)],
+    shoe = loft_profile("Shoe", [(0.024, 0.06, 0.132, x, -0.036), (0.062, 0.064, 0.134, x, -0.04), (0.097, 0.057, 0.108, x, -0.025),
+                                 (0.127, 0.049, 0.064, x, -0.002), (0.15, 0.047, 0.052, x, 0.004)],
                         segs=16, mat=M["boot"], subsurf=1, shape=lambda t, a: (1.0 + 0.06 * (1 - t) * max(0, math.cos(a)), 0.0))
-    tongue = loft_profile("ShoeTongue", [(0.08, 0.022, 0.03, x, -0.08), (0.12, 0.02, 0.025, x, -0.052), (0.15, 0.016, 0.02, x, -0.045)],
+    sock = loft_profile("Sock", [(0.14, 0.05, 0.05, x, 0.002), (0.2, 0.05, 0.05, x, 0.0)], segs=14, mat=M["sock"], solidify=0.008, subsurf=1)
+    tongue = loft_profile("ShoeTongue", [(0.08, 0.022, 0.03, x, -0.082), (0.12, 0.02, 0.025, x, -0.054), (0.15, 0.016, 0.02, x, -0.047)],
                           segs=10, mat=M["sole"], cap_top=True, subsurf=1)
-    laces = [stroke("Lace", [Vector((x - 0.026, -0.098 + i * 0.022, 0.093 + i * 0.012)), Vector((x, -0.106 + i * 0.022, 0.1 + i * 0.012)),
-                             Vector((x + 0.026, -0.098 + i * 0.022, 0.093 + i * 0.012))], 0.005, M["sole"]) for i in range(2)]
-    parts = [sole, shoe, tongue] + laces
-    for p in parts:
-        if p.type == "MESH": apply_mods(p)
-    laces = to_mesh(laces, "Laces"); parts = [sole, shoe, tongue, laces]
-    for p in parts: parent_keep(p, leg)
+    laces = [stroke("Lace", [Vector((x - 0.026, -0.1 + i * 0.022, 0.095 + i * 0.012)), Vector((x, -0.108 + i * 0.022, 0.102 + i * 0.012)),
+                             Vector((x + 0.026, -0.1 + i * 0.022, 0.095 + i * 0.012))], 0.005, M["sole"]) for i in range(2)]
+    for p in (sole, shoe, sock, tongue): apply_mods(p)
+    laces = to_mesh(laces, "Laces")
+    for p in (sole, shoe, sock, tongue, laces): parent_keep(p, leg)
     return leg
 
 
@@ -366,8 +434,7 @@ def build_avatar():
     s = new_scene("avatar"); M = avatar_mats()
     head = make_head(M)
     make_face(M, head)
-    loft_profile("Neck", [(0.98, 0.06, 0.058), (1.08, 0.058, 0.056), (1.2, 0.07, 0.068)], segs=14, mat=M["skin"], subsurf=1)
-    make_scarf(M)
+    loft_profile("Neck", [(0.98, 0.068, 0.064), (1.08, 0.064, 0.06), (1.2, 0.072, 0.07)], segs=14, mat=M["skin"], subsurf=1)
     for sx, nm in ((-1, "R"), (1, "L")):
         make_arm(M, sx, nm); make_leg(M, sx, nm)
     finish("avatar", s)
@@ -467,6 +534,7 @@ def spikes(M, dirs, name="Tuft", r=0.05):
 def build_hair(M, style):
     random.seed(7)
     parts = [hair_cap(M, **{"bob": dict(front=56, side=100, back=125), "long": dict(front=58, side=96, back=125),
+                           "crew": dict(front=50, side=90, back=122), "middle": dict(front=56, side=96, back=130),
                            "ponytail": dict(front=56, side=94, back=125), "buns": dict(front=56, side=94, back=125)}.get(style, {}))]
     locks, tufts, fr = [], [], []
     if style == "spiky":
@@ -513,7 +581,28 @@ def build_hair(M, style):
             tufts.append(make_hair_lock("Tuft", pts, 0.036, M["hair"], profile=lambda t: 0.9 - 0.5 * t * t, center=c + Vector((0, 0, 0.02)),
                                         width=1.25, flat=0.85, res=4))
             tufts.append(ico_s("TuftCore", 1, c + Vector((0, 0, 0.035)), M["hair"], 2, scale=(0.08, 0.08, 0.075)))
-    parts.append(to_mesh(fr, "Fringe"))
+    elif style == "middle":
+        # curtain bangs: parted in the centre, each side sweeping out to frame the face
+        for sg in (-1, 1):
+            for ph0, ln in ((5, 0.2), (17, 0.17), (30, 0.14)):
+                pts = [sph(10, sg * (ph0 * 0.4 + 2), 0.05), sph(30, sg * (ph0 + 10), 0.1), sph(54, sg * (ph0 + 30), 0.1), sph(76, sg * (ph0 + 46), 0.05)]
+                pts.append(pts[-1] + Vector((sg * 0.006, -0.012, -ln * 0.6)))
+                fr.append(make_hair_lock("Fringe", pts, 0.05, M["hair"]))
+        locks = side_locks(M, ln=0.15, r=0.05, curl_in=0.02, ph=82) + back_layer(M, n=7, end_th=128, hang=0.03, r=0.058, curl=0.015)
+    elif style == "crew":
+        # short crop: many small flat clumps combed down and back, a textured fringe flicked up
+        rnd = random.Random(11)
+        for th in (16, 42, 68, 94):
+            n = 6 if th < 30 else 9
+            for i in range(n):
+                ph = -180 + (i + rnd.uniform(0.25, 0.75)) * 360 / n
+                aph = abs(ph); lim = 50 + 40 * min(1, aph / 90) if aph < 90 else 90 + 32 * (aph - 90) / 90
+                if th + 12 > lim: continue
+                pts = [sph(max(2, th - 10), ph, 0.0), sph(th + 6, ph, 0.03), sph(th + 20, ph + rnd.uniform(-6, 6), 0.012)]
+                locks.append(make_hair_lock("Crop", pts, 0.05, M["hair"], width=2.3, flat=0.4, curl=0.2))
+        for ph in (-30, -11, 8, 27):
+            fr.append(make_hair_lock("Fringe", [sph(36, ph, 0.04), sph(48, ph, 0.08), sph(47, ph + 5, 0.17)], 0.042, M["hair"], width=1.5, flat=0.7))
+    if fr: parts.append(to_mesh(fr, "Fringe"))
     if locks: parts.append(to_mesh(locks, "Locks"))
     if tufts: parts.append(to_mesh(tufts, "Tuft"))
     return parts
@@ -528,25 +617,37 @@ def wave_hem(n=5, amp=0.04, dz=0.02, folds=0.02):
     return lambda t, a: (1 + t * t * (amp * math.sin(a * n) + folds * math.sin(a * 11 + 1)), -t ** 3 * dz * math.cos(a * n))
 
 
+def athletic_shorts(M, o, main="o2", trim="o1"):
+    """sports shorts: waist + two leg openings. The leg tubes are named *_LegL / *_LegR so the game parents them to the legs."""
+    o.append(loft_profile("Shorts", [(0.665, 0.17, 0.13), (0.58, 0.195, 0.148), (0.5, 0.21, 0.158), (0.46, 0.205, 0.155)], segs=28, mat=M[main], subsurf=1))
+    o.append(loft_profile("Waistband", [(0.62, 0.176, 0.134), (0.67, 0.172, 0.131)], segs=28, mat=M[trim], solidify=0.014, subsurf=1))
+    for sx, nm in ((-1, "R"), (1, "L")):
+        x = sx * HIP[0]
+        o.append(loft_profile("ShortsLeg_Leg" + nm, [(0.53, 0.112, 0.112, x, 0), (0.42, 0.113, 0.111, x, 0.0), (0.34, 0.119, 0.116, x, 0.004)],
+                              segs=18, mat=M[main], solidify=0.012, subsurf=1))
+        o.append(loft_profile("ShortsHem_Leg" + nm, [(0.342, 0.12, 0.117, x, 0.004), (0.364, 0.119, 0.116, x, 0.004)], segs=18, mat=M[trim],
+                              solidify=0.016, subsurf=1))
+
+
 def build_outfit(M, kind):
     o = []
     if kind == "cloak":
-        o.append(loft_profile("Tunic", torso_rings(1.0) + [(1.075, 0.075, 0.07)], segs=24, mat=M["o2"], subsurf=1))
+        o.append(loft_profile("Tunic", torso_rings(1.0) + [(1.075, 0.076, 0.072)], segs=24, mat=M["o2"], subsurf=1))
         o.append(loft_profile("TunicSkirt", [(0.6, 0.155, 0.118), (0.48, 0.19, 0.15), (0.36, 0.22, 0.18)], segs=24, mat=M["o2"],
                               solidify=0.012, shape=wave_hem(6, 0.05, 0.015)))
         o.append(loft_profile("Belt", [(0.6, 0.158, 0.122), (0.64, 0.156, 0.12)], segs=24, mat=M["hatb"], solidify=0.02, subsurf=1))
         o.append(ico_s("Buckle", 1, (0, -0.128, 0.62), M["gold"], 2, scale=(0.03, 0.012, 0.025)))
         # long cape hanging from the shoulders down the back (open at the sides so the arms show)
-        cape = [(1.02, 0.2, 0.15, 0, 0.03), (0.9, 0.26, 0.2, 0, 0.05), (0.62, 0.31, 0.25, 0, 0.07), (0.38, 0.35, 0.29, 0, 0.09), (0.16, 0.39, 0.33, 0, 0.11)]
+        cape = [(1.02, 0.22, 0.16, 0, 0.035), (0.9, 0.29, 0.21, 0, 0.055), (0.62, 0.33, 0.26, 0, 0.075), (0.38, 0.36, 0.3, 0, 0.09), (0.16, 0.4, 0.34, 0, 0.11)]
         wav = lambda t, a: (1 + t * t * (0.05 * math.sin(a * 5) + 0.02 * math.sin(a * 13)), -t ** 3 * 0.025 * math.cos(a * 5))
         o.append(loft_profile("Cloak", cape, segs=36, mat=M["o1"], gap=1.95, solidify=0.018, displace=0.01, shape=wav))
         o.append(loft_profile("CloakTrim", [(0.21, 0.384, 0.325, 0, 0.105), (0.16, 0.395, 0.335, 0, 0.11)], segs=36, mat=M["o2"], gap=1.95,
                               solidify=0.024, shape=lambda t, a: (1.012 * (1 + (0.6 + 0.4 * t) * (0.05 * math.sin(a * 5) + 0.02 * math.sin(a * 13))), -(0.6 + 0.4 * t) * 0.025 * math.cos(a * 5))))
         # shoulder capelet: closed at the back, parted at the front, scalloped hem with trim
-        cap_rings = [(1.075, 0.09, 0.085, 0, 0.01), (1.03, 0.19, 0.15, 0, 0.012), (0.97, 0.27, 0.19, 0, 0.015), (0.88, 0.31, 0.22, 0, 0.02)]
+        cap_rings = [(1.075, 0.092, 0.088, 0, 0.01), (1.03, 0.21, 0.16, 0, 0.012), (0.97, 0.31, 0.205, 0, 0.015), (0.88, 0.355, 0.235, 0, 0.02)]
         scal = lambda t, a: (1 + t * 0.03 * math.sin(a * 8), -t * t * 0.03 * abs(math.sin(a * 4)))
         o.append(loft_profile("Capelet", cap_rings, segs=40, mat=M["o1"], gap=0.22, solidify=0.02, shape=scal, subsurf=1))
-        o.append(loft_profile("CapeletTrim", [(0.9, 0.305, 0.217, 0, 0.02), (0.875, 0.315, 0.225, 0, 0.02)], segs=40, mat=M["o2"], gap=0.22, solidify=0.02,
+        o.append(loft_profile("CapeletTrim", [(0.9, 0.35, 0.232, 0, 0.02), (0.875, 0.36, 0.24, 0, 0.02)], segs=40, mat=M["o2"], gap=0.22, solidify=0.02,
                               shape=lambda t, a: (1.01 * (1 + 0.03 * math.sin(a * 8)), -0.03 * abs(math.sin(a * 4)))))
         # hood down: draped over the upper back, not a ring around the neck
         o.append(loft_profile("HoodDown", [(1.09, 0.13, 0.1, 0, 0.04), (1.04, 0.2, 0.15, 0, 0.09), (0.97, 0.19, 0.16, 0, 0.15),
@@ -554,27 +655,57 @@ def build_outfit(M, kind):
                               segs=24, mat=M["o1"], gap=2.0, solidify=0.018, subsurf=1))
         o.append(ico_s("Clasp", 1, (0, -0.135, 1.03), M["gold"], 2, scale=(0.038, 0.016, 0.038)))
         o.append(ico_s("ClaspGem", 1, (0, -0.15, 1.03), M["hatb"], 2, scale=(0.017, 0.01, 0.017)))
-    elif kind == "vest":
-        o.append(loft_profile("Torso", torso_rings(1.0, 0.5) + [(1.075, 0.075, 0.07)], segs=24, mat=M["skin"], subsurf=1))
-        vest = torso_rings(1.07, 0.6, 1.035)
-        o.append(loft_profile("Vest", vest, segs=28, mat=M["o1"], gap=0.5, solidify=0.02, subsurf=1,
-                              shape=lambda t, a: (1.0, 0.0)))
-        o.append(loft_profile("VestTrim", [(0.6, 0.162, 0.123), (0.63, 0.16, 0.121)], segs=28, mat=M["o2"], gap=0.5, solidify=0.026, subsurf=1))
-        for sx in (-1, 1):  # front edge piping
-            o.append(stroke("Piping", [Vector((sx * 0.062, -0.122, 0.62)), Vector((sx * 0.07, -0.13, 0.78)), Vector((sx * 0.07, -0.13, 0.9)),
-                                       Vector((sx * 0.05, -0.11, 1.01))], 0.009, M["o2"]))
-            o.append(loft_profile("Pocket", [(0.68, 0.035, 0.008, sx * 0.1, -0.13), (0.73, 0.035, 0.008, sx * 0.1, -0.13)], segs=12, mat=M["o2"],
-                                  cap_top=True, cap_bottom=True, subsurf=1))
-        o.append(loft_profile("Shorts", [(0.64, 0.152, 0.116), (0.56, 0.18, 0.138), (0.47, 0.2, 0.15)], segs=24, mat=M["o2"], subsurf=1))
+    elif kind in ("tee", "polo"):
+        sr = [(z, rx * 1.06, ry * 1.08) for z, rx, ry in TORSO if 0.46 <= z <= 1.035]
+        sr[0] = (0.46, 0.19, 0.15)
+        o.append(loft_profile("Shirt", sr, segs=28, mat=M["o1"], subsurf=1, shape=lambda t, a: (1 + 0.012 * (1 - t) * math.sin(a * 7), 0)))
+        for sx in (-1, 1):   # contrast side panels, like a real sports tee
+            o.append(stroke("SidePanel", [Vector((sx * 0.232, 0.0, 0.93)), Vector((sx * 0.182, 0.0, 0.72)), Vector((sx * 0.196, 0.0, 0.48))], 0.014, M["o2"]))
+        if kind == "tee":
+            o.append(loft_profile("Neckline", [(1.02, 0.122, 0.098), (1.05, 0.1, 0.084)], segs=24, mat=M["o2"], solidify=0.014, subsurf=1))
+            o.append(loft_profile("ChestStripe", [(0.82, 0.21, 0.149), (0.85, 0.214, 0.151)], segs=28, mat=M["o2"], solidify=0.008, subsurf=1))
+        else:   # polo: fold-down collar, button placket
+            o.append(loft_profile("Collar", [(1.02, 0.125, 0.1, 0, 0.004), (1.075, 0.125, 0.1, 0, 0.008), (1.05, 0.165, 0.14, 0, 0.012)], segs=28,
+                                  mat=M["o2"], gap=0.3, solidify=0.012, subsurf=1))
+            o.append(loft_profile("Placket", [(0.9, 0.022, 0.006, 0, -0.153), (1.02, 0.022, 0.006, 0, -0.126)], segs=8, mat=M["o2"], cap_top=True, cap_bottom=True, subsurf=0))
+            for z, y in ((0.94, -0.162), (0.99, -0.148)):
+                o.append(ico_s("Button", 1, (0, y, z), M["o1"], 2, scale=(0.01, 0.006, 0.01)))
+        athletic_shorts(M, o)
+    elif kind == "tank":
+        o.append(loft_profile("Torso", torso_rings(1.0, 0.5) + [(1.075, 0.076, 0.072)], segs=24, mat=M["skin"], subsurf=1))
+        tr = [(z, rx * 1.05, ry * 1.08) for z, rx, ry in TORSO if 0.46 <= z <= 0.93]
+        tr[0] = (0.46, 0.19, 0.15)
+        o.append(loft_profile("Shirt", tr, segs=28, mat=M["o1"], solidify=0.012, subsurf=1,
+                              shape=lambda t, a: (1, -t * 0.05 * max(0, math.cos(a)) ** 3)))     # scoop neck at the front
+        o.append(loft_profile("ChestStripe", [(0.76, 0.182, 0.139), (0.8, 0.192, 0.144)], segs=28, mat=M["o2"], solidify=0.008, subsurf=1))
+        for sx in (-1, 1):   # wide straps over the shoulders
+            o.append(stroke("Strap", [Vector((sx * 0.1, -0.15, 0.9)), Vector((sx * 0.13, -0.1, 1.0)), Vector((sx * 0.14, 0.0, 1.035)),
+                                      Vector((sx * 0.13, 0.1, 1.0)), Vector((sx * 0.1, 0.15, 0.9))], 0.03, M["o1"]))
+        athletic_shorts(M, o)
+    elif kind == "hoodie":
+        hr = [(z, rx * 1.1, ry * 1.13) for z, rx, ry in TORSO if 0.46 <= z <= 1.035]
+        hr[0] = (0.45, 0.2, 0.16)
+        o.append(loft_profile("Hoodie", hr, segs=28, mat=M["o1"], subsurf=1, displace=0.006))
+        o.append(loft_profile("HoodieHem", [(0.43, 0.2, 0.16), (0.49, 0.198, 0.158)], segs=32, mat=M["o2"], solidify=0.02, subsurf=1,
+                              shape=lambda t, a: (1 + 0.01 * math.sin(a * 32), 0)))
+        o.append(loft_profile("Pocket", [(0.52, 0.12, 0.012, 0, -0.163), (0.6, 0.115, 0.012, 0, -0.16), (0.66, 0.095, 0.012, 0, -0.155)], segs=16,
+                              mat=M["o1"], cap_top=True, cap_bottom=True, subsurf=1))
+        o.append(loft_profile("HoodDown", [(1.09, 0.14, 0.11, 0, 0.045), (1.04, 0.22, 0.16, 0, 0.1), (0.97, 0.21, 0.17, 0, 0.16),
+                                           (0.9, 0.14, 0.13, 0, 0.2), (0.86, 0.04, 0.04, 0, 0.22)], segs=24, mat=M["o1"], gap=2.0, solidify=0.018, subsurf=1))
         for sx in (-1, 1):
-            o.append(loft_profile("ShortsLeg", [(0.5, 0.1, 0.1, sx * 0.1, 0), (0.4, 0.096, 0.096, sx * 0.105, 0), (0.355, 0.1, 0.1, sx * 0.108, 0)],
-                                  segs=16, mat=M["o2"], solidify=0.012, subsurf=1, shape=lambda t, a: (1 + 0.03 * t * math.sin(a * 4), 0)))
-        o.append(loft_profile("Sash", [(0.6, 0.158, 0.122), (0.655, 0.155, 0.119)], segs=24, mat=M["hatb"], solidify=0.024, subsurf=1,
-                              shape=lambda t, a: (1, 0.01 * math.sin(a * 2))))
-        knot = ico_s("SashKnot", 1, (0.1, -0.13, 0.625), M["hatb"], 2, scale=(0.035, 0.022, 0.03))
-        tails = [stroke("SashTail", [Vector((0.1, -0.135, 0.62)), Vector((0.12 + i * 0.02, -0.145, 0.56)), Vector((0.13 + i * 0.04, -0.14, 0.49))],
-                        0.018, M["hatb"], lambda t: 1 - 0.4 * t) for i in range(2)]
-        o += [knot] + tails
+            o.append(stroke("Drawstring", [Vector((sx * 0.035, -0.13, 1.05)), Vector((sx * 0.04, -0.15, 0.96)), Vector((sx * 0.036, -0.158, 0.88))], 0.007, M["o2"]))
+            o.append(ico_s("Aglet", 1, (sx * 0.036, -0.159, 0.87), M["gold"], 1, scale=(0.008, 0.008, 0.013)))
+            nm = "L" if sx > 0 else "R"
+            o.append(loft_profile("JoggerCuff_Leg" + nm, [(0.13, 0.054, 0.054, sx * HIP[0], 0.002), (0.19, 0.058, 0.058, sx * HIP[0], 0.0)], segs=16,
+                                  mat=M["o2"], solidify=0.012, subsurf=1, shape=lambda t, a: (1 + 0.02 * math.sin(a * 16), 0)))
+    elif kind == "dress":
+        o.append(loft_profile("Bodice", torso_rings(1.04, 0.6) + [(1.075, 0.076, 0.072)], segs=26, mat=M["o1"], subsurf=1))
+        o.append(loft_profile("Neckline", [(1.02, 0.125, 0.1), (1.05, 0.102, 0.086)], segs=24, mat=M["o2"], solidify=0.012, subsurf=1))
+        o.append(loft_profile("Waistband", [(0.62, 0.17, 0.128), (0.665, 0.166, 0.126)], segs=28, mat=M["o2"], solidify=0.016, subsurf=1))
+        pleat = lambda t, a: (1 + t * 0.045 * math.sin(a * 18), -t * t * 0.008 * math.cos(a * 18))
+        o.append(loft_profile("Skirt", [(0.64, 0.168, 0.128), (0.54, 0.24, 0.195), (0.42, 0.3, 0.25)], segs=54, mat=M["o1"], solidify=0.012, shape=pleat))
+        o.append(loft_profile("SkirtTrim", [(0.42, 0.302, 0.252), (0.445, 0.296, 0.247)], segs=54, mat=M["o2"], solidify=0.016,
+                              shape=lambda t, a: (1.01 * (1 + 0.045 * math.sin(a * 18)), 0)))
     elif kind == "gown":
         o.append(loft_profile("Bodice", torso_rings(1.02, 0.6) + [(1.075, 0.075, 0.07)], segs=24, mat=M["o2"], subsurf=1))
         skirt = [(0.68, 0.152, 0.116), (0.6, 0.2, 0.16), (0.45, 0.3, 0.25), (0.28, 0.4, 0.34), (0.1, 0.47, 0.41)]
@@ -617,39 +748,67 @@ def build_outfit(M, kind):
     return o
 
 
-# ---------------------------------------------------------------- hats
+# ---------------------------------------------------------------- accessories (Roblox-style slots)
+def bill(name, mat, ang=66, ln=0.17, z=H + 0.075, r=0.322, back=False):
+    """curved cap bill: a strip around the front of the head, sticking out and drooping a little"""
+    bm = bmesh.new(); nu, nv = 13, 5; grid = []
+    for i in range(nu):
+        u = i / (nu - 1) * 2 - 1; ph = math.radians(u * ang) + (math.pi if back else 0.0)
+        base = Vector((math.sin(ph) * r, -math.cos(ph) * r, z)); d = Vector((math.sin(ph), -math.cos(ph), 0))
+        row = []
+        for j in range(nv):
+            v = j / (nv - 1); L = ln * (1 - 0.45 * u * u)
+            row.append(bm.verts.new(base + d * (v * L) + Vector((0, 0, -0.035 * v * v - 0.018 * u * u * v))))
+        grid.append(row)
+    for i in range(nu - 1):
+        for j in range(nv - 1):
+            bm.faces.new((grid[i][j], grid[i + 1][j], grid[i + 1][j + 1], grid[i][j + 1]))
+    ob = _mesh_obj(name, bm, mat)
+    m = ob.modifiers.new("thick", "SOLIDIFY"); m.thickness = 0.016; m.offset = 0
+    m = ob.modifiers.new("sub", "SUBSURF"); m.levels = 1
+    return ob
+
+
+def cap_dome(M, name="CapDome", low=0.06, top=0.34):
+    return loft_profile(name, [(H + low, 0.322, 0.316, 0, 0.012), (H + 0.16, 0.318, 0.312, 0, 0.012), (H + 0.25, 0.284, 0.278, 0, 0.014),
+                               (H + 0.31, 0.205, 0.2, 0, 0.016), (H + top, 0.07, 0.07, 0, 0.018)], segs=32, mat=M["hatm"], cap_top=True, subsurf=1)
+
+
 def build_hat(M, kind):
     o = []
     top = H + 0.27     # roughly where hats sit over hair
-    if kind == "straw":
-        o.append(loft_profile("Brim", [(top - 0.06, 0.25, 0.25), (top - 0.07, 0.4, 0.4), (top - 0.055, 0.5, 0.5)], segs=36, mat=M["hatm"], solidify=0.018,
-                              subsurf=1, shape=lambda t, a: (1 + t * 0.02 * math.sin(a * 6), t * t * 0.015 * math.sin(a * 2))))
-        o.append(loft_profile("Dome", [(top - 0.07, 0.25, 0.25), (top + 0.04, 0.245, 0.245), (top + 0.11, 0.2, 0.2), (top + 0.14, 0.1, 0.1)], segs=28,
-                              mat=M["hatm"], cap_top=True, subsurf=1))
-        o.append(loft_profile("Band", [(top - 0.045, 0.255, 0.255), (top + 0.015, 0.252, 0.252)], segs=28, mat=M["hatb"], solidify=0.012, subsurf=1))
-    elif kind == "wide":
-        o.append(loft_profile("WideBrim", [(top - 0.06, 0.24, 0.24), (top - 0.07, 0.42, 0.42), (top - 0.1, 0.58, 0.58)], segs=40, mat=M["hatm"], solidify=0.016,
-                              subsurf=1, shape=lambda t, a: (1 + t * 0.03 * math.sin(a * 4), -t * t * 0.05 * math.cos(a * 2) + t * t * 0.03)))
-        o.append(loft_profile("WideCrown", [(top - 0.07, 0.24, 0.24), (top + 0.08, 0.235, 0.235), (top + 0.15, 0.22, 0.22), (top + 0.17, 0.15, 0.15)],
-                              segs=28, mat=M["hatm"], cap_top=True, subsurf=1, shape=lambda t, a: (1, t * 0.02 * math.cos(a))))
-        o.append(loft_profile("Ribbon", [(top - 0.05, 0.245, 0.245), (top + 0.02, 0.242, 0.242)], segs=28, mat=M["hatb"], solidify=0.012, subsurf=1))
-        for k, (ph, z) in enumerate(((60, 0.0), (80, 0.02), (100, -0.01))):  # flowers: five petals around a gold centre
-            p = math.radians(ph); c = Vector((math.sin(p) * 0.26, -math.cos(p) * 0.26, top - 0.02 + z))
-            for i in range(5):
-                a = i / 5 * math.tau
-                o.append(ico_s("Flower", 1, c + Vector((0.025 * math.cos(a) * math.cos(p), 0.025 * math.cos(a) * math.sin(p), 0.025 * math.sin(a))),
-                               M["hatb"], 1, scale=(0.022, 0.022, 0.022)))
-            o.append(ico_s("Flower", 1, c + Vector((math.sin(p) * 0.012, -math.cos(p) * 0.012, 0)), M["gold"], 1, scale=(0.015, 0.015, 0.015)))
-        o.append(stroke("RibbonTail", [Vector((0.2, 0.15, top - 0.03)), Vector((0.24, 0.24, top - 0.12)), Vector((0.22, 0.3, top - 0.26))], 0.02, M["hatb"],
-                        lambda t: 1 - 0.3 * t))
+    if kind in ("cap", "backcap"):
+        back = kind == "backcap"
+        o.append(cap_dome(M))
+        o.append(bill("CapBill", M["hatm"], back=back))
+        o.append(ico_s("CapButton", 1, (0, 0.018, H + 0.345), M["hatb"], 2, scale=(0.028, 0.028, 0.014)))
+        for k in range(6):   # panel seams from the button down to the band
+            a = k / 6 * math.tau + 0.52
+            o.append(stroke("Seam", [Vector((math.sin(a) * 0.06, 0.018 - math.cos(a) * 0.06, H + 0.338)), Vector((math.sin(a) * 0.22, 0.016 - math.cos(a) * 0.215, H + 0.29)),
+                                     Vector((math.sin(a) * 0.318, 0.014 - math.cos(a) * 0.312, H + 0.16))], 0.0045, M["hatb"]))
+        o.append(ico_s("CapLogo", 1, (0, 0.012 + (0.318 if back else -0.318), H + 0.19), M["hatb"], 2, scale=(0.045, 0.012, 0.03)))
+    elif kind == "visor":
+        o.append(loft_profile("VisorBand", [(H + 0.05, 0.322, 0.316, 0, 0.012), (H + 0.12, 0.318, 0.312, 0, 0.012)], segs=32, mat=M["hatm"], solidify=0.016, subsurf=1))
+        o.append(bill("VisorBill", M["hatm"], z=H + 0.08, ln=0.19))
+        o.append(loft_profile("VisorStripe", [(H + 0.075, 0.326, 0.32, 0, 0.012), (H + 0.095, 0.326, 0.32, 0, 0.012)], segs=32, mat=M["hatb"], solidify=0.01, subsurf=1))
+    elif kind == "headband":
+        tilt = lambda t, a: (1 + 0.008 * math.sin(a * 40), 0.035 * math.cos(a))      # higher over the forehead, lower at the back
+        o.append(loft_profile("Headband", [(H + 0.07, 0.296, 0.284, 0, 0.018), (H + 0.12, 0.29, 0.278, 0, 0.018)], segs=48, mat=M["hatb"], solidify=0.022,
+                              subsurf=1, shape=tilt))
+        o.append(ico_s("HeadbandLogo", 1, (0, -0.29, H + 0.13), M["hatm"], 2, scale=(0.03, 0.008, 0.018)))
+    elif kind == "bandana":
+        o.append(loft_profile("Bandana", [(H + 0.05, 0.318, 0.312, 0, 0.014), (H + 0.15, 0.316, 0.31, 0, 0.014), (H + 0.24, 0.28, 0.274, 0, 0.016),
+                                          (H + 0.3, 0.18, 0.176, 0, 0.018), (H + 0.315, 0.05, 0.05, 0, 0.02)], segs=32, mat=M["hatb"], cap_top=True, subsurf=1,
+                              shape=lambda t, a: (1 + 0.012 * math.sin(a * 9) * (1 - t), 0.03 * math.cos(a) * (1 - t))))
+        o.append(ico_s("BandanaKnot", 1, (0, 0.33, H + 0.06), M["hatb"], 2, scale=(0.04, 0.03, 0.035)))
+        for sx in (-1, 1):
+            o.append(stroke("BandanaTail", [Vector((0, 0.34, H + 0.05)), Vector((sx * 0.04, 0.37, H - 0.04)), Vector((sx * 0.06, 0.38, H - 0.14))], 0.022, M["hatb"],
+                            lambda t: 1 - 0.6 * t))
     elif kind == "hood":
         rings = [(H - 0.22, 0.3, 0.28, 0, 0.04), (H - 0.05, 0.33, 0.33, 0, 0.03), (H + 0.12, 0.32, 0.33, 0, 0.03), (H + 0.26, 0.26, 0.28, 0, 0.04),
                  (H + 0.34, 0.14, 0.17, 0, 0.07), (H + 0.37, 0.04, 0.06, 0, 0.1)]
-        hood = loft_profile("HoodUp", rings, segs=32, mat=M["hatm"], gap=0.78, gap_rows={0, 1, 2}, solidify=0.025, subsurf=1,
-                            shape=lambda t, a: (1 + 0.015 * math.sin(a * 7) * (1 - t), 0))
-        o.append(hood)
-        o.append(stroke("HoodTip", [Vector((0, 0.12, H + 0.36)), Vector((0, 0.3, H + 0.3)), Vector((0, 0.4, H + 0.12)), Vector((0, 0.42, H - 0.02))],
-                        0.06, M["hatm"], lambda t: max(0.0, 1 - t) ** 0.8))
+        o.append(loft_profile("HoodUp", rings, segs=32, mat=M["hatm"], gap=0.78, gap_rows={0, 1, 2}, solidify=0.025, subsurf=1,
+                              shape=lambda t, a: (1 + 0.015 * math.sin(a * 7) * (1 - t), 0)))
     elif kind == "beanie":
         o.append(loft_profile("Beanie", [(H + 0.12, 0.31, 0.3), (H + 0.22, 0.3, 0.29), (H + 0.3, 0.26, 0.25), (H + 0.36, 0.17, 0.165), (H + 0.38, 0.05, 0.05)],
                               segs=32, mat=M["hatm"], cap_top=True, subsurf=1, shape=lambda t, a: (1 + 0.008 * math.sin(a * 16), 0)))
@@ -665,7 +824,6 @@ def build_hat(M, kind):
         for i in range(6):
             a = i / 6 * math.tau
             o.append(ico_s("Jewel", 1, (math.sin(a) * 0.22, -math.cos(a) * 0.22, top + 0.13), M["hatb"], 2, scale=(0.018, 0.018, 0.018)))
-            o.append(ico_s("Jewel", 1, (math.sin(a + 0.52) * 0.215, -math.cos(a + 0.52) * 0.215, top + 0.02), M["hatb"], 2, scale=(0.012, 0.012, 0.012)))
     elif kind == "halo":
         bpy.ops.mesh.primitive_torus_add(major_radius=0.22, minor_radius=0.022, major_segments=40, minor_segments=8, location=(0, 0.05, H + 0.47),
                                          rotation=(0.15, 0, 0))
@@ -680,14 +838,73 @@ def build_hat(M, kind):
                                  mat=M["inner"], cap_bottom=True, subsurf=1)
             inner.location = base; inner.rotation_euler = (0.15, sx * 0.35, 0)
             o += [ear, inner]
+    return _finish_group(o, "HatDetails")
+
+
+def _finish_group(o, details_name):
     curves = [x for x in o if x.type == "CURVE"]
     if curves:
         rest = [x for x in o if x.type != "CURVE"]
-        o = rest + [to_mesh(curves, "HatDetails")]
+        o = rest + [to_mesh(curves, details_name)]
     return o
 
 
-# ---------------------------------------------------------------- face options
+def build_eyewear(M, kind):
+    o = []
+    if kind == "glasses":
+        for sx in (-1, 1):
+            bpy.ops.mesh.primitive_torus_add(major_radius=0.058, minor_radius=0.008, major_segments=28, minor_segments=6,
+                                             location=on_head(sx * 0.096, -0.012, 0.03), rotation=(math.pi / 2, 0, sx * 0.25))
+            g = bpy.context.object; g.name = "GlassRim"; assign(g, M["ink"]); smooth(g); o.append(g)
+            o.append(stroke("Temple", [on_head(sx * 0.15, 0.0, 0.03), Vector((sx * 0.25, -0.12, H + 0.0)), Vector((sx * 0.27, 0.0, H - 0.01))], 0.006, M["ink"]))
+        o.append(stroke("Bridge", [on_head(-0.04, 0.0, 0.03), on_head(0, 0.012, 0.032), on_head(0.04, 0.0, 0.03)], 0.006, M["ink"]))
+    elif kind == "shades":
+        # wraparound sport shades: a curved lens band across the eyes, rimmed on top, arms back to the ears
+        sh = loft_profile("Shades", [(H - 0.03, 0.28, 0.268, 0, 0.0), (H + 0.02, 0.283, 0.271, 0, 0.0)], segs=40, mat=M["lens"], gap=1.95, solidify=0.006,
+                          subsurf=1, shape=lambda t, a: (1, -0.012 * (1 - t) * max(0, math.cos(a)) ** 8))
+        sh.rotation_euler = (0, 0, math.pi); apply_mods(sh); o.append(sh)
+        rim = loft_profile("ShadesRim", [(H + 0.018, 0.285, 0.273, 0, 0.0), (H + 0.03, 0.285, 0.273, 0, 0.0)], segs=40, mat=M["hatb"], gap=1.95, solidify=0.01, subsurf=1)
+        rim.rotation_euler = (0, 0, math.pi); apply_mods(rim); o.append(rim)
+    return _finish_group(o, "EyewearDetails")
+
+
+def build_neck(M, kind):
+    if kind == "scarf":
+        return make_scarf(M)
+    o = []
+    if kind == "towel":
+        ring = loft_profile("Towel", [(1.02, 0.135, 0.12, 0, 0.012), (1.06, 0.15, 0.135, 0, 0.014), (1.1, 0.13, 0.118, 0, 0.012)], segs=24, mat=M["towel"],
+                            solidify=0.03, subsurf=1, shape=lambda t, a: (1 + 0.03 * math.sin(a * 4), 0.01 * math.sin(a * 2)))
+        curves = []
+        for sx in (-1, 1):
+            cu = bpy.data.curves.new("TowelEnd", "CURVE"); cu.dimensions = "3D"
+            sp = cu.splines.new("BEZIER"); sp.bezier_points.add(2)
+            for k, bp in enumerate(sp.bezier_points):
+                t = k / 2
+                bp.co = Vector((sx * (0.09 + 0.01 * t), -0.13 - 0.04 * t, 1.04 - 0.24 * t)); bp.handle_left_type = bp.handle_right_type = "AUTO"
+            cu.extrude = 0.05; cu.resolution_u = 6
+            ob = _link(bpy.data.objects.new("TowelEnd", cu)); cu.materials.append(M["towel"]); curves.append(ob)
+        ends = to_mesh(curves, "TowelEnds")
+        m = ends.modifiers.new("thick", "SOLIDIFY"); m.thickness = 0.02
+        o = [ring, ends]
+    elif kind == "chain":
+        pts = [Vector((math.sin(a) * 0.128, -math.cos(a) * 0.118 + 0.01, 1.04 - 0.05 * max(0, math.cos(a)) ** 2)) for a in [i / 12 * math.tau for i in range(13)]]
+        o.append(stroke("Chain", pts, 0.008, M["gold"], res=4))
+        o.append(ico_s("Pendant", 1, (0, -0.122, 0.975), M["gold"], 2, scale=(0.022, 0.008, 0.028)))
+    return _finish_group(o, "NeckDetails")
+
+
+def build_wrist(M, kind):
+    o = []
+    for sx, nm in ((-1, "R"), (1, "L")):
+        if kind == "band" and nm == "L": continue
+        x = sx * SHOULDER[0]
+        o.append(loft_profile("Wristband_Arm" + nm, [(SHOULDER[2] - 0.365, 0.048, 0.048, x, 0), (SHOULDER[2] - 0.305, 0.052, 0.052, x, 0)], segs=20,
+                              mat=M["hatb"], solidify=0.018, subsurf=1, shape=lambda t, a: (1 + 0.012 * math.sin(a * 24), 0)))
+    return o
+
+
+# ---------------------------------------------------------------- face marks
 def build_face_option(M, kind, head):
     o = []
     if kind == "scar":
@@ -699,25 +916,33 @@ def build_face_option(M, kind, head):
             b = loft_profile("Blush", [(-0.001, 0.035, 0.035), (0.0, 0.035, 0.035)], segs=16, mat=M["blush"], cap_top=True, cap_bottom=True, subsurf=1)
             for v in b.data.vertices: v.co = on_head(sx * 0.15 + v.co.x, -0.06 + v.co.y * 0.55, 0.004 + v.co.z)
             o.append(shrink_onto(b, head, 0.002))
-    elif kind == "glasses":
+    elif kind == "freckles":
+        rnd = random.Random(5)
         for sx in (-1, 1):
-            bpy.ops.mesh.primitive_torus_add(major_radius=0.06, minor_radius=0.008, major_segments=28, minor_segments=6,
-                                             location=on_head(sx * 0.096, -0.01, 0.028), rotation=(math.pi / 2, 0, sx * 0.25))
-            g = bpy.context.object; g.name = "GlassRim"; assign(g, M["ink"]); smooth(g); o.append(g)
-            o.append(stroke("Temple", [on_head(sx * 0.152, 0.0, 0.03), Vector((sx * 0.25, -0.12, H + 0.0)), Vector((sx * 0.27, 0.0, H - 0.01))], 0.006, M["ink"]))
-        o.append(stroke("Bridge", [on_head(-0.038, 0.0, 0.028), on_head(0, 0.012, 0.03), on_head(0.038, 0.0, 0.028)], 0.006, M["ink"]))
-    curves = [x for x in o if x.type == "CURVE"]
-    if curves:
-        rest = [x for x in o if x.type != "CURVE"]
-        o = rest + [to_mesh(curves, "FaceDetails")]
+            for i in range(7):
+                o.append(ico_s("Freckle", 1, on_head(sx * (0.1 + rnd.uniform(0, 0.07)), -0.05 - rnd.uniform(0, 0.035), 0.001), M["freckle"], 1,
+                               scale=(0.0055, 0.003, 0.0055)))
+    elif kind == "bandaid":
+        o.append(ico_s("Bandaid", 1, on_head(0.13, -0.07, -0.002), M["bandaid"], 2, scale=(0.04, 0.008, 0.013), rot=(0, 0.35, 0.45)))
+        o.append(ico_s("BandaidPad", 1, on_head(0.13, -0.07, 0.003), M["sole"], 1, scale=(0.012, 0.005, 0.009), rot=(0, 0.35, 0.45)))
+    elif kind == "eyeblack":
+        for sx in (-1, 1):
+            o.append(ico_s("EyeBlack", 1, on_head(sx * 0.1, -0.072, -0.001), M["ink"], 2, scale=(0.032, 0.005, 0.008), rot=(0, sx * -0.1, sx * 0.35)))
+    o = _finish_group(o, "FaceDetails")
     for x in o: apply_mods(x)
     return o
 
 
-HAIR_STYLES = ["spiky", "messy", "long", "bob", "ponytail", "buns"]
-OUTFITS = ["cloak", "vest", "gown", "jacket"]
-HATS = ["straw", "wide", "hood", "beanie", "crown", "halo", "ears"]
-FACES = ["scar", "blush", "glasses"]
+EYES = ["round", "sharp", "narrow", "fierce"]
+BROWS = ["soft", "thick", "angry", "raised"]
+MOUTHS = ["smile", "grin", "neutral", "smirk"]
+HAIR_STYLES = ["spiky", "messy", "middle", "crew", "long", "bob", "ponytail", "buns"]
+OUTFITS = ["tee", "polo", "tank", "hoodie", "dress", "jacket", "cloak", "gown"]
+HATS = ["cap", "backcap", "visor", "headband", "beanie", "bandana", "hood", "ears", "halo", "crown"]
+EYEWEAR = ["glasses", "shades"]
+NECKWEAR = ["scarf", "towel", "chain"]
+WRISTWEAR = ["bands", "band"]
+FACES = ["scar", "blush", "freckles", "bandaid", "eyeblack"]
 
 
 def build_avatar_parts():
@@ -726,44 +951,54 @@ def build_avatar_parts():
     for k in OUTFITS: group("outfit_" + k, build_outfit(M, k))
     for k in HAIR_STYLES: group("hair_" + k, build_hair(M, k))
     for k in HATS: group("hat_" + k, build_hat(M, k))
+    for k in EYEWEAR: group("eyewear_" + k, build_eyewear(M, k))
+    for k in NECKWEAR: group("neck_" + k, build_neck(M, k))
+    for k in WRISTWEAR: group("wrist_" + k, build_wrist(M, k))
     for k in FACES: group("face_" + k, build_face_option(M, k, head))
+    for k in EYES: group("eyes_" + k, [apply_mods(x) for x in build_eyes(M, k, head)])
+    for k in BROWS: group("brows_" + k, [apply_mods(x) for x in build_brows(M, k, head)])
+    for k in MOUTHS: group("mouth_" + k, [apply_mods(x) for x in build_mouth(M, k, head)])
     bpy.data.objects.remove(head, do_unlink=True)
     finish("avatar_parts", s)
 
 
-def preview_avatar(outfit="cloak", hair="spiky", hat="none", face="none", name="avatar_preview"):
-    """build one look into a scene you can look at (not exported). Re-running replaces it."""
+DEFAULT_LOOK = dict(outfit="tee", hair="spiky", hat="none", face="none", eyes="sharp", brows="thick", mouth="smile", eyewear="none", neck="scarf", wrist="none")
+
+
+def _build_look(M, look, head):
+    lk = {**DEFAULT_LOOK, **look}
+    build_outfit(M, lk["outfit"]); build_hair(M, lk["hair"])
+    build_eyes(M, lk["eyes"], head); build_brows(M, lk["brows"], head); build_mouth(M, lk["mouth"], head)
+    if lk["hat"] != "none": build_hat(M, lk["hat"])
+    if lk["face"] != "none": build_face_option(M, lk["face"], head)
+    if lk["eyewear"] != "none": build_eyewear(M, lk["eyewear"])
+    if lk["neck"] != "none": build_neck(M, lk["neck"])
+    if lk["wrist"] != "none": build_wrist(M, lk["wrist"])
+
+
+def _build_body(M):
+    head = make_head(M); make_face(M, head)
+    loft_profile("Neck", [(0.98, 0.068, 0.064), (1.08, 0.064, 0.06), (1.2, 0.072, 0.07)], segs=14, mat=M["skin"], subsurf=1)
+    for sx, nm in ((-1, "R"), (1, "L")): make_arm(M, sx, nm); make_leg(M, sx, nm)
+    return head
+
+
+def preview_grid(looks, name="avatar_preview", gap=1.15):
+    """several looks side by side (x offsets) for review shots; looks = [dict(outfit=..., hair=..., hat=..., ...), ...] (not exported)"""
     old = bpy.data.scenes.get(name)
     if old:
         for o in list(old.objects): bpy.data.objects.remove(o, do_unlink=True)
         bpy.data.scenes.remove(old)
-    s = new_scene(name); M = avatar_mats()
-    head = make_head(M); make_face(M, head)
-    loft_profile("Neck", [(0.98, 0.06, 0.058), (1.08, 0.058, 0.056), (1.2, 0.07, 0.068)], segs=14, mat=M["skin"], subsurf=1)
-    make_scarf(M)
-    for sx, nm in ((-1, "R"), (1, "L")): make_arm(M, sx, nm); make_leg(M, sx, nm)
-    build_outfit(M, outfit); build_hair(M, hair)
-    if hat != "none": build_hat(M, hat)
-    if face != "none": build_face_option(M, face, head)
-    return s
-
-
-def preview_grid(looks, name="avatar_preview", gap=1.1):
-    """several looks side by side (x offsets) for review shots; looks = [(outfit, hair, hat, face), ...]"""
-    s = preview_avatar(*looks[0], name=name)
-    done = set(s.objects)
-    for i, lk in enumerate(looks[1:], 1):
-        M = avatar_mats()
-        head = make_head(M); make_face(M, head)
-        loft_profile("Neck", [(0.98, 0.06, 0.058), (1.08, 0.058, 0.056), (1.2, 0.07, 0.068)], segs=14, mat=M["skin"], subsurf=1)
-        make_scarf(M)
-        for sx, nm in ((-1, "R"), (1, "L")): make_arm(M, sx, nm); make_leg(M, sx, nm)
-        build_outfit(M, lk[0]); build_hair(M, lk[1])
-        if lk[2] != "none": build_hat(M, lk[2])
-        if lk[3] != "none": build_face_option(M, lk[3], head)
+    s = new_scene(name); done = set()
+    for i, lk in enumerate(looks):
+        M = avatar_mats(); head = _build_body(M); _build_look(M, lk, head)
         for o in s.objects:
             if o not in done and o.parent is None: o.location.x += i * gap
         done = set(s.objects)
     for o in s.objects:
         if o.type == "EMPTY": o.empty_display_size = 0.05
     return s
+
+
+def preview_avatar(name="avatar_preview", **look):
+    return preview_grid([look], name=name)

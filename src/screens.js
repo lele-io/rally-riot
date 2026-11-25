@@ -3,7 +3,7 @@ import { h } from "./ui.js";
 import { RACKETS, RACKET, RARITY, RARITIES, STAT_KEYS, STAT_LABEL, racketStats, summon, PITY } from "./rackets.js";
 import { profile, update } from "./save.js";
 import { sfx } from "./sfx.js";
-import { HAIR, OUTFIT, HAT, FACE, SKIN_TONES, PALETTE, DEFAULT_LOOK, normalizeLook, randomLook } from "./looks.js";
+import { HAIR, OUTFIT, HAT, FACE, EYES, BROWS, MOUTH, BUILD, EYEWEAR, NECK, WRIST, SKIN_TONES, PALETTE, EYE_COLORS, DEFAULT_LOOK, normalizeLook, randomLook } from "./looks.js";
 
 export function panel(host, title, onClose, ...body) {
   const close = () => { wrap.remove(); removeEventListener("keydown", esc); onClose && onClose(); };
@@ -188,13 +188,17 @@ export function openCustomize(host, lobby, onChange) {
       h("button", { class: "sw" + (look[key].toLowerCase() === c ? " on" : ""), style: `background:${c}`, title: c, onclick: () => { look[key] = c; sfx.ui(); commit(); draw(); } })), h("label", { class: "sw custom", title: "Pick any color" }, custom));
   };
   const row = (label, ...kids) => h("div", { class: "col", style: "gap:6px" }, h("div", { class: "lbl" }, label), ...kids);
+  // categories like a character creator: body, face, hair, clothes, then Roblox-style accessory slots that all stack
   const tabs = {
+    Body: () => [row("Skin tone", swatches("skin", SKIN_TONES)), row("Build", chips(BUILD, "build"))],
+    Face: () => [row("Eyes", chips(EYES, "eyeStyle")), row("Eye color", swatches("eyes", EYE_COLORS)), row("Brows", chips(BROWS, "brows")),
+      row("Mouth", chips(MOUTH, "mouth")), row("Face detail", chips(FACE, "face"))],
     Hair: () => [row("Style", chips(HAIR, "hair")), row("Hair color", swatches("hairColor", PALETTE))],
-    Outfit: () => [row("Outfit", chips(OUTFIT, "outfit")), row("Main color", swatches("c1", PALETTE)), row("Trim color", swatches("c2", PALETTE))],
-    Hat: () => [row("Headwear", chips(HAT, "hat")), row("Hat color", swatches("hatColor", PALETTE)), row("Band / ribbon", swatches("hatBand", PALETTE))],
-    Face: () => [row("Skin tone", swatches("skin", SKIN_TONES)), row("Eye color", swatches("eyes", ["#1f1b24", "#5a3a2a", "#2d4a9e", "#3f9e6e", "#8a63e0", "#d83a3f", "#f2a33a", "#5fd6c4"])), row("Face detail", chips(FACE, "face"))],
+    Outfit: () => [row("Outfit", chips(OUTFIT, "outfit")), row("Main color", swatches("c1", PALETTE)), row("Trim / shorts color", swatches("c2", PALETTE))],
+    Accessories: () => [row("Head", chips(HAT, "hat")), row("Eyewear", chips(EYEWEAR, "eyewear")), row("Neck", chips(NECK, "neck")), row("Wrists", chips(WRIST, "wrist")),
+      row("Accessory color", swatches("hatColor", PALETTE)), row("Accent color", swatches("hatBand", PALETTE))],
   };
-  let tab = "Hair";
+  let tab = "Body";
   const bar = h("div", { class: "tabs" });
   function draw() {
     bar.innerHTML = "";
@@ -208,6 +212,6 @@ export function openCustomize(host, lobby, onChange) {
     h("button", { class: "btn", onclick: () => { look = { ...DEFAULT_LOOK }; sfx.ui(); commit(); draw(); } }, "RESET"));
   lobby.closeup = true;
   const pn = panel(host, "Customize", () => { lobby.closeup = false; }, bar, body, tools,
-    h("div", { class: "muted", style: "font-size:12px;margin-top:10px" }, "Your look is saved automatically and shows up in online matches too. Your scarf always shows your team color."));
+    h("div", { class: "muted", style: "font-size:12px;margin-top:10px" }, "Your look is saved automatically and shows up in online matches too. The Team Scarf and the ring under your feet show your team color."));
   return pn;
 }

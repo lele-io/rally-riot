@@ -36,7 +36,10 @@ export class Lobby {
     if (old) { this.scene.remove(old); if (this.racket) this.hand.remove(this.racket); }
     this.avatar = makeAvatar(look, TEAM_COLORS[0]); this.scene.add(this.avatar);
     this.avatar.position.set(1.6, 0, 3.2); this.avatar.rotation.y = old ? old.rotation.y : -0.35;
+    const prevR = this.armR?.rotation.x ?? 3.9, prevL = this.armL?.rotation.x ?? 0;
     this.armR = this.avatar.getObjectByName("ArmR"); this.armL = this.avatar.getObjectByName("ArmL");
+    // keep the pose across rebuilds (changing a look used to drop the racket and swing it back up)
+    this.armR.rotation.x = prevR; this.armL.rotation.x = prevL;
     this.hand = this.avatar.getObjectByName("HandR");
     this.racket = null; this.setRacket(this.racketId || this.game.equipped());
   }
@@ -44,7 +47,7 @@ export class Lobby {
   setRacket(id) {
     this.racketId = id;
     if (this.racket) this.hand.remove(this.racket);
-    this.racket = makeRacket(id); this.racket.rotation.x = Math.PI; this.racket.position.y = 0.06; this.racket.scale.setScalar(1.35);
+    this.racket = makeRacket(id); this.racket.rotation.x = Math.PI; this.racket.position.y = 0.06; this.racket.scale.setScalar(1.55);
     this.hand.add(this.racket);
   }
 
