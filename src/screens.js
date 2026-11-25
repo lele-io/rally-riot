@@ -169,7 +169,8 @@ function reveal(host, lobby, results, done) {
 // ---------------------------------------------------------------- play
 export function openPlay(host, start, extraTabs = []) {
   const p = profile();
-  let size = 1, level = p.settings.bot ?? 0.5;
+  let size = 1, level = p.settings.bot ?? 0.4;
+  if (level === 0.5) level = 0.4;   // Normal was eased from 0.5 to 0.4 (owner: "normal is harder than normal")
   const seg = (opts, get, set) => {
     const s = h("div", { class: "seg" });
     const draw = () => { s.innerHTML = ""; for (const [n, v] of opts) s.append(h("button", { class: get() === v ? "on" : "", onclick: () => { set(v); sfx.ui(); draw(); } }, n)); };
@@ -177,7 +178,7 @@ export function openPlay(host, start, extraTabs = []) {
   };
   const casual = h("div", { class: "col", style: "align-items:flex-start;gap:12px" },
     h("div", { class: "lbl" }, "Mode"), seg([["1v1", 1], ["2v2", 2], ["3v3", 3]], () => size, (v) => (size = v)),
-    h("div", { class: "lbl" }, "Bot skill"), seg([["Easy", 0.2], ["Normal", 0.5], ["Hard", 0.85]], () => level, (v) => { level = v; update((q) => (q.settings.bot = v)); }),
+    h("div", { class: "lbl" }, "Bot skill"), seg([["Easy", 0.2], ["Normal", 0.4], ["Hard", 0.85]], () => level, (v) => { level = v; update((q) => (q.settings.bot = v)); }),
     h("button", { class: "btn hot", style: "margin-top:6px;font-size:20px;padding:14px 34px", onclick: () => start({ type: "casual", size, level }) }, "START"));
   const tabs = [["Casual", casual], ...extraTabs];
   const body = h("div", {});

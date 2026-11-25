@@ -68,7 +68,7 @@ export function solveShot(from, target, speed, spin = 0, topspin = 0, opts = {})
 }
 
 // MAX_APEX: the follow camera can't show a shuttle much higher than this, so no shot may climb above it
-export const MAX_APEX = 7.5;
+export const MAX_APEX = 5.0; // (was 7.5: still went off the top of the screen near the player)
 function solveAt(from, target, speed, spin, topspin, { clear = 0.25, preferHigh = false, maxApex = MAX_APEX } = {}) {
   let aim = [target[0], target[1]];
   let best = null;

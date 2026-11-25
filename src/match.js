@@ -360,7 +360,7 @@ export class Match {
       const id = m.k === "closed" ? this.net.hostId : m.id;
       if (id === this.net.hostId && !this.authority) { this.game.input.setWantLock(false); this.ui?.banner("HOST LEFT", "#ff7d9b", 3); this.state = "over"; setTimeout(() => this.opts.onEnd?.({ won: null, aborted: true, score: [...this.score], stats: { ...this.stats } }), 1500); return; }
       const p = this.players.find((q) => q.id === id);
-      if (p && p.kind === "remote" && this.authority) { p.kind = "bot"; p.name += " (bot)"; this.brains.set(p, new BotBrain(this, p, 0.5)); this.ui?.pop("A player left — a bot takes over", "#ffd23d", true); }
+      if (p && p.kind === "remote" && this.authority) { p.kind = "bot"; p.name += " (bot)"; this.brains.set(p, new BotBrain(this, p, 0.4)); this.ui?.pop("A player left — a bot takes over", "#ffd23d", true); }
     }
   }
 

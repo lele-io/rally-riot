@@ -210,7 +210,68 @@ def make_shoes(M, rig):
     return out
 
 
-HANGS_FROM_HIPS = ("Skirt", "Gown", "Cloak", "TunicSkirt", "HoodDown")
+HANGS_FROM_HIPS = ("Skirt", "Gown", "Cloak", "TunicSkirt")
+FOLLOWS_CHEST = ("HoodDown", "Capelet")
+MAIN_GARMENT = ("Shirt", "Hoodie", "Jacket", "Bodice", "Tunic")
+BANDS = ("Neckline", "ChestStripe", "Waistband", "HoodieHem", "JacketHem", "Collar", "Ruffle", "Belt", "Sash", "CapeletTrim", "VestTrim")
+SMALL_DETAILS = ("Details", "Button", "Aglet", "Pocket", "PocketFlap", "Placket", "Zip", "ZipPull", "Buckle", "Clasp", "ClaspGem", "BowKnot", "Bow", "SashKnot")
+
+
+def _shrink(ob, target, off, mode="OUTSIDE"):   # OUTSIDE: only vertices inside the target move out (OUTSIDE_SURFACE would project all)
+    m = ob.modifiers.new("fit", "SHRINKWRAP"); m.target = target; m.wrap_mode = mode; m.offset = off
+    apply_mods(ob)
+
+
+def _snap_islands(ob, surf, off=0.006):
+    """move each loose piece of `ob` so its centre sits on `surf` (+ off along the surface normal): details stop floating"""
+    bpy.context.view_layer.update()
+    me = ob.data; bm = bmesh.new(); bm.from_mesh(me); bm.verts.ensure_lookup_table()
+    seen, islands = set(), []
+    for v in bm.verts:
+        if v.index in seen: continue
+        stack, isl = [v], []
+        seen.add(v.index)
+        while stack:
+            a = stack.pop(); isl.append(a)
+            for e in a.link_edges:
+                b = e.other_vert(a)
+                if b.index not in seen: seen.add(b.index); stack.append(b)
+        islands.append(isl)
+    inv = surf.matrix_world.inverted()
+    for isl in islands:
+        c = sum((v.co for v in isl), Vector()) / len(isl)
+        ok, loc, nrm, _ = surf.closest_point_on_mesh(inv @ c)
+        if not ok: continue
+        loc = surf.matrix_world @ loc; nrm = (surf.matrix_world.to_3x3() @ nrm).normalized()
+        depth = max((v.co - c).dot(nrm) * -1 for v in isl)          # how far the piece reaches back toward the cloth
+        d = (loc + nrm * (off + max(0.0, depth))) - c
+        for v in isl: v.co += d
+    bm.to_mesh(me); bm.free(); me.update()
+
+
+def fit_outfit(objs, body):
+    """after the warp: keep every layer outside the one beneath it (body < shorts < shirt < bands/details)"""
+    by = lambda keys: [o for o in objs if any(o.name.split("__")[-1].startswith(k) for k in keys)]
+    mains = by(MAIN_GARMENT); shorts = by(("Shorts",)); main = mains[0] if mains else None
+    for o in shorts: _shrink(o, body, 0.008)
+    for o in mains + by(FOLLOWS_CHEST) + by(("Torso",)):
+        _shrink(o, body, 0.02 if o.name.split("__")[-1] != "Torso" else 0.0015)
+        if o in mains and shorts:
+            # tuck the top of the shorts in under the shirt hem (shrinkwrapping against the open shorts tube shreds the shirt)
+            bpy.context.view_layer.update()
+            hem = min((o.matrix_world @ v.co).z for v in o.data.vertices)
+            for sh in shorts:
+                for v in sh.data.vertices:
+                    if v.co.z > hem + 0.012:
+                        k = min(1.0, (v.co.z - hem - 0.012) / 0.03)
+                        v.co.x *= 1 - 0.14 * k; v.co.y *= 1 - 0.14 * k
+                sh.data.update()
+    surf = main or body
+    for o in by(BANDS):
+        if o.name.split("__")[-1].startswith("Waistband") and not main: _shrink(o, body, 0.012)
+        else: _shrink(o, surf, 0.004)
+    for o in by(SMALL_DETAILS):
+        _snap_islands(o, surf, 0.004)
 
 
 def build_avatar_rig(export=True, only=None, name="avatar"):
@@ -232,9 +293,12 @@ def build_avatar_rig(export=True, only=None, name="avatar"):
             if only and only.get(slot) != k: continue
             objs = _gather(lambda: builders[slot](k))
             objs = [warp(o, "head" if slot in head_slots else "garment") for o in objs]
-            for o in _name_all(objs, f"{slot}_{k}"):
+            objs = _name_all(objs, f"{slot}_{k}")
+            if slot in ("outfit", "neck"): fit_outfit(objs, body)
+            for o in objs:
                 if slot in head_slots: rig_bind(o, rig, group="Head")
-                elif any(t in o.name for t in HANGS_FROM_HIPS) or (slot == "outfit" and k in ("gown", "cloak") and "Trim" in o.name): rig_bind(o, rig, group="Hips")
+                elif any(o.name.split("__")[-1].startswith(t) for t in FOLLOWS_CHEST): rig_bind(o, rig, group="Chest")
+                elif any(t in o.name for t in HANGS_FROM_HIPS) or (slot == "outfit" and k in ("gown", "cloak") and "Trim" in o.name and "Capelet" not in o.name): rig_bind(o, rig, group="Hips")
                 elif slot == "neck": rig_bind(o, rig, group="Chest")
                 else: copy_weights(o, body, rig)
     # wristbands: rigid on the forearms

@@ -79,7 +79,7 @@ export function startOnline(game, { conn, me, hostId, size, roster, points }) {
   const isHost = me === hostId;
   const players = roster.map((p) => ({
     id: p.id, name: p.name, team: p.team, racket: p.racket, look: normalizeLook(p.look),
-    kind: p.id === me ? "local" : p.bot && isHost ? "bot" : "remote", level: 0.55,
+    kind: p.id === me ? "local" : p.bot && isHost ? "bot" : "remote", level: 0.45,
   }));
   const meP = roster.find((p) => p.id === me);
   const tn = (t) => (size === 1 ? roster.find((p) => p.team === t)?.name : t === meP.team ? "YOUR TEAM" : "RIVALS");
