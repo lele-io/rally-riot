@@ -28,7 +28,7 @@ export class Lobby {
 
     this.camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 1000);
     this.camPos = new THREE.Vector3(); this.camLook = new THREE.Vector3();
-    this.menuOpen = false; this.summonSeq = null; this.time = 0; this.flourish = 3;
+    this.menuOpen = false; this.summonSeq = null; this.time = 0;
     this.frame(true);
   }
 
@@ -67,15 +67,11 @@ export class Lobby {
   update(dt) {
     this.time += dt;
     this.game.input.endTick();
-    // idle: breathe, sway the racket, and every few seconds show off with a swing
+    // idle: breathe and gently sway the racket (the periodic "show-off" swing slammed the racket down: removed)
     const a = this.avatar, t = this.time;
     a.position.y = Math.abs(Math.sin(t * 1.6)) * 0.02;
-    this.flourish -= dt;
-    let armT = 3.9 + Math.sin(t * 1.3) * 0.08;
-    if (this.flourish < 0.6 && this.flourish > 0) armT = this.flourish > 0.35 ? 2.6 : 6.1;
-    if (this.flourish < 0) { this.flourish = 5 + Math.random() * 3; }
-    if (this.flourish > 0.2 && this.flourish < 0.35) a.position.y += 0.15;
-    this.armR.rotation.x += (armT - this.armR.rotation.x) * Math.min(1, dt * (this.flourish < 0.6 ? 18 : 6));
+    const armT = 3.9 + Math.sin(t * 1.3) * 0.08;
+    this.armR.rotation.x += (armT - this.armR.rotation.x) * Math.min(1, dt * 6);
     this.armL.rotation.x = Math.sin(t * 1.3) * 0.1;
     a.rotation.y = -0.35 + Math.sin(t * 0.5) * 0.08;
 
